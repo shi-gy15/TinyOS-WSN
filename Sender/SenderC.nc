@@ -25,6 +25,9 @@ implementation {
 	// led0(red): sense
 	// led2(blue): send
 
+	//nodeId
+	int nodeId = 1;
+
 	bool busy;
 	message_t packet;
 	SenseMsg temp;
@@ -52,6 +55,8 @@ implementation {
     if (isEmpty()) {
       head = &newNode;
       head->index = currentIndex;
+			head->data.index = currentIndex;
+			head->data.nodeId = nodeId;
       head->data.temperature = msg->temperature;
       head->data.humidity = msg->humidity;
       head->data.radiation = msg->radiation;
@@ -62,6 +67,8 @@ implementation {
       back->next = &newNode;
 			back = back->next;
       back->index = currentIndex;
+			back->data.index = currentIndex;
+			back->data.nodeId = nodeId;
       back->data.temperature = msg->temperature;
       back->data.humidity = msg->humidity;
       back->data.radiation = msg->radiation;
