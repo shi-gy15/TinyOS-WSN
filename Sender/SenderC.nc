@@ -1,7 +1,8 @@
 
 #include "Message.h"
+#include "Queue.h"
 
-#define WND_SIZE 10
+#define WND_SIZE 5
 #define SENSE_TIMER_PERIOD 2000
 #define SEND_TIMER_PERIOD 2000
 
@@ -16,6 +17,7 @@ module SenderC {
 	uses interface Read<uint16_t> as ReadRadiation;
 	uses interface Packet;
 	uses interface AMSend;
+	uses interface Receive;
 	uses interface SplitControl as RadioControl;
 }
 
@@ -25,62 +27,122 @@ implementation {
 
 	bool busy;
 	message_t packet;
-	SenseMsg* dataQueue[WND_SIZE];
-	uint16_t qFront;
-	uint16_t qBack;
-	uint16_t qLen;
 	SenseMsg temp;
 	SenseMsg sample;
 
+	// Queue
+	struct QueueNode* head;
+  struct QueueNode* back;
+  int currentIndex;
 
 	void initQueue() {
-		// init packet queue
-		for (uint16_t i = 0; i < WND_SIZE; i++) {
-			dataQueue[i] = NULL;
-		}
-		// qFront: first element
-		// qBack: last element's next
-		qFront = WND_SIZE;
-		qBack = WND_SIZE;
-		qLen = 0;
+		head = NULL;
+    currentIndex = 1;
 	}
 
-
-
-	uint8_t isEmpty() {
-		return (qFront == WND_SIZE && qBack == WND_SIZE);
+	bool isEmpty() {
+		if (head==NULL)
+			return TRUE;
+		else
+			return FALSE;
 	}
 
-	void enqueue(SenseMsg* msg) {
-		if (qLen == 0) {
-			dataQueue[0] = msg;
-			qFront = 0;
-			qBack = 0;
-			qLen++;
-		}
-		else if (qLen < WND_SIZE) {
-			qBack = qBack % WND_SIZE;
-			dataQueue[qBack] = msg;
-			qBack++;
-			qLen++;
-		}
-		else {
-			return;
+  void enQueue(SenseMsg* msg) {
+		struct QueueNode newNode;
+    if (isEmpty()) {
+      head = &newNode;
+      head->index = currentIndex;
+      head->data.temperature = msg->temperature;
+      head->data.humidity = msg->humidity;
+      head->data.radiation = msg->radiation;
+      head->next = NULL;
+      back = head;
+    }
+    else {
+      back->next = &newNode;
+			back = back->next;
+      back->index = currentIndex;
+      back->data.temperature = msg->temperature;
+      back->data.humidity = msg->humidity;
+      back->data.radiation = msg->radiation;
+      back->next = NULL;
+    }
+    currentIndex ++;
+  }
+
+  SenseMsg* deQueue() {
+    SenseMsg tmp ;
+
+    tmp.temperature = 0;
+    tmp.humidity = 0;
+    tmp.radiation = 0;
+
+    if (isEmpty()) {
+      return NULL;
+    }
+    else {
+      tmp.temperature = head->data.temperature;
+      tmp.humidity = head->data.humidity;
+      tmp.radiation = head->data.radiation;
+
+      head = head->next;
+
+      return &tmp;
+    }
+  }
+
+	void GBNSenderSend() {
+		SenseMsg* msg ;
+		int i;
+		struct QueueNode* p = head;
+		SenseMsg * payload;
+
+		for (i=0;i<WND_SIZE;i++)
+		{
+			if (p == NULL)
+				break;
+
+			msg = &(p->data);
+			
+			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			if (payload == NULL) {
+				return;
+			}
+			payload->temperature = msg->temperature;
+			payload->humidity = msg->humidity;
+			payload->radiation = msg->radiation;
+			if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+				busy = TRUE;
+			}
+
+			p = p->next;
 		}
 	}
 
-	SenseMsg* dequeue() {
-		if (qLen == 0) {
-			return NULL;
+	message_t* GBNSenderReceive(message_t* msg, void* payload, uint8_t len) {
+		AckMsg* rcvPayload;
+
+		int AckIndex = 0;
+		struct QueueNode * p = head;
+
+		if (len != sizeof(AckMsg)) {
+			return msg;
 		}
-		else {
-			SenseMsg* res = dataQueue[qFront];
-			qFront++;
-			qFront = qFront % WND_SIZE;
-			qLen--;
-			return res;
+
+		rcvPayload = (AckMsg*) payload;
+		
+		AckIndex = rcvPayload->index;
+
+		// 去除队列中的元素
+		while (p->index <= AckIndex && p!=NULL ){
+			deQueue();
+			p = head;	
 		}
+
+		return msg;
 	}
+
+	
 
 	// check if msg includes right data
 	// return 0 if passes
@@ -102,7 +164,7 @@ implementation {
 		// todo
 		busy = FALSE;
 
-		call initQueue();
+		initQueue();
 
 		// init sample
 		sample.temperature = 0;
@@ -127,6 +189,7 @@ implementation {
 	}
 
 	event void SenseTimer.fired() {
+		SenseMsg res;
 		// todo
 		call Leds.led0Toggle();
 		//temp = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
@@ -137,47 +200,39 @@ implementation {
 		call ReadHumidity.read();
 		call ReadRadiation.read();
 
-		if (call checkMsg(&temp) == 0) {
-			SenseMsg res = temp;
-			call enqueue(&res);
+		if (checkMsg(&temp) == 0) {
+			res = temp;
+			enQueue(&res);
 		}
 		call Leds.led0Toggle();
 	}
 
 	event void SendTimer.fired() {
+		SenseMsg* msg ;
+
 		// todo
 		call Leds.led2Toggle();
-		SenseMsg* msg = (call dequeue());
-		if (msg != NULL) {
-			SenseMsg* payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
-			if (payload == NULL) {
-				return;
-			}
-			payload->temperature = msg->temperature;
-			payload->humidity = msg->humidity;
-			payload->radiation = msg->radiation;
-			if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
-				busy = TRUE;
-			}
-		}
+
+		GBNSenderSend();
+
 		call Leds.led2Toggle();
 	}
 
 	event void ReadTemperature.readDone(error_t result, uint16_t val) {
 		if (result == SUCCESS) {
-			temp->temperature = val;
+			temp.temperature = val;
 		}
 	}
 
 	event void ReadHumidity.readDone(error_t result, uint16_t val) {
 		if (result == SUCCESS) {
-			temp->humidity = val;
+			temp.humidity = val;
 		}
 	}
 
 	event void ReadRadiation.readDone(error_t result, uint16_t val) {
 		if (result == SUCCESS) {
-			temp->radiation = val;
+			temp.radiation = val;
 		}
 	}
 
@@ -187,5 +242,9 @@ implementation {
 			call Leds.led0Toggle();
 			busy = FALSE;
 		}
+	}
+
+	event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
+		return GBNSenderReceive(msg, payload, len);
 	}
 }
