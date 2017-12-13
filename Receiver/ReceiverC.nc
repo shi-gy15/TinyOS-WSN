@@ -7,6 +7,8 @@ module ReceiverC {
 		interface Boot;
 		interface Leds;
 		interface Packet;
+		interface Packet as SPacket;
+		interface AMSend as SAMSend;
 		interface AMSend;
 		interface Receive;
 		interface SplitControl as RadioControl;
@@ -15,12 +17,16 @@ module ReceiverC {
 }
 
 implementation {
+	bool sbusy;
 	bool busy;
+	uint16_t ack;
 	message_t pkt;
+    SenseMsg sample;
 
 	event void Boot.booted() {
 		// todo
 		busy = FALSE;
+		ack = 0;
 		call RadioControl.start();
 		call SerialControl.start();
 	}
@@ -49,52 +55,67 @@ implementation {
 	}
 
 	event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
-		
 
+		SenseMsg* rcvPayload;
+		SenseMsg* sndPayload;
+		AckMsg* sndackPayload;
 
-
-
-		Temperature_Msg* rcvPayload;
-		Temperature_Msg* sndPayload;
-
-		if (len != sizeof(Temperature_Msg)) {
+		if (len != sizeof(SenseMsg)) {
 			return msg;
 		}
 
-		// call Leds.led0Toggle();
-		// call Leds.led2Toggle();
-
+		rcvPayload = (SenseMsg*) payload;
 		call Leds.led1Toggle();
-		// call Leds.led1Toggle();
-		/*if (len != sizeof(Temperature_Msg)) {
 
-			if (len == 8) {
+		//right condition
+		if (rcvPayload->index == ack + 1){
+		    ack++;
+		    //send sensemsg
+		    sndPayload = (SenseMsg*) call SPacket.getPayload(&pkt, sizeof(SenseMsg));
 
-				call Leds.led1Toggle();
-			}
-			return NULL;
-		}*/
-		//call Leds.led1Toggle();
-		//call Leds.led2Toggle();
-		rcvPayload = (Temperature_Msg*) payload;
-		sndPayload = (Temperature_Msg*) call Packet.getPayload(&pkt, sizeof(Temperature_Msg));
-		if (sndPayload == NULL) {
-			return NULL;
+		    if (sndPayload == NULL) {
+			    return NULL;
+		    }
+		    sndPayload->radiation = rcvPayload->radiation;
+		    sndPayload->humidity = rcvPayload->humidity;
+		    sndPayload->temperature = rcvPayload->temperature;
+		    sndPayload->index = rcvPayload->index;
+
+		    if (call SAMSend.send(AM_BROADCAST_ADDR, &pkt, sizeof(SenseMsg)) == SUCCESS) {
+			    sbusy = TRUE;
+		    }
 		}
-		
-		sndPayload->temperature = rcvPayload->temperature;
-		if (call AMSend.send(AM_BROADCAST_ADDR, &pkt, sizeof(Temperature_Msg)) == SUCCESS) {
-			busy = TRUE;
-		}
-		return msg;
+
+		//send ack
+		sndackPayload = (AckMsg*) call Packet.getPayload(&pkt, sizeof(AckMsg));
+
+        if (sndackPayload == NULL) {
+            return NULL;
+        }
+
+        sndackPayload->index = ack;
+
+        if (call AMSend.send(AM_BROADCAST_ADDR, &pkt, sizeof(AckMsg)) == SUCCESS) {
+            busy = TRUE;
+        }
+
+	    return msg;
+
 	}
 
-
-	event void AMSend.sendDone(message_t* msg, error_t err) {
+    event void AMSend.sendDone(message_t* msg, error_t err) {
 		// todo
 		if (&pkt == msg) {
 			call Leds.led1Toggle();
 			busy = FALSE;
+		}
+	}
+
+	event void SAMSend.sendDone(message_t* msg, error_t err) {
+		// todo
+		if (&pkt == msg) {
+			call Leds.led1Toggle();
+			sbusy = FALSE;
 		}
 	}
 }

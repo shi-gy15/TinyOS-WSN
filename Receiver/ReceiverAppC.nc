@@ -1,4 +1,3 @@
-
 configuration ReceiverAppC {
 	// .
 }
@@ -12,9 +11,11 @@ implementation {
 
 	App.Boot -> MainC.Boot;
 	App.Leds -> LedsC.Leds;
-	App.Packet -> SerialActiveMessageC;
-	App.AMSend -> SerialActiveMessageC.AMSend[AM_TEMPERATURE_MSG];
-	App.Receive -> ActiveMessageC.Receive[AM_TEMPERATURE_MSG];	
+	App.Packet -> ActiveMessageC.Packet;
+	App.SPacket -> SerialActiveMessageC.Packet;
+	App.SAMSend -> SerialActiveMessageC.AMSend[AM_SENSE_MSG];
+	App.AMSend -> ActiveMessageC.AMSend[AM_ACK_MSG];
+	App.Receive -> ActiveMessageC.Receive[AM_SENSE_MSG];
 	App.RadioControl -> ActiveMessageC;
 	App.SerialControl -> SerialActiveMessageC;
 }

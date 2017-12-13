@@ -118,6 +118,7 @@ implementation {
 			payload->temperature = msg->temperature;
 			payload->humidity = msg->humidity;
 			payload->radiation = msg->radiation;
+			payload->index = msg->index;
 			if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
 				busy = TRUE;
 			}
