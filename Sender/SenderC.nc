@@ -3,6 +3,7 @@
 #include "Queue.h"
 
 #define WND_SIZE 5
+#define QUEUE_MAX_LENGTH 50
 #define SENSE_TIMER_PERIOD 2000
 #define SEND_TIMER_PERIOD 2000
 
@@ -34,87 +35,92 @@ implementation {
 	SenseMsg sample;
 
 	// Queue
-	struct QueueNode* head;
-  struct QueueNode* back;
-  int currentIndex;
+	SenseMsg queue[QUEUE_MAX_LENGTH];
+	int head;
+	int back;
+	int currentIndex;
 
 	void initQueue() {
-		head = NULL;
-    currentIndex = 1;
+		head = 0;
+    back = 0;
+		currentIndex = 1;
 	}
 
 	bool isEmpty() {
-		if (head==NULL)
+		if (head==back)
+			return TRUE;
+		else
+			return FALSE;
+	}
+	
+	bool isFull() {
+		if (back + 1 == head || back + 1 == head + QUEUE_MAX_LENGTH)
 			return TRUE;
 		else
 			return FALSE;
 	}
 
-  void enQueue(SenseMsg* msg) {
-		struct QueueNode newNode;
-    if (isEmpty()) {
-      head = &newNode;
-      head->index = currentIndex;
-			head->data.index = currentIndex;
-			head->data.nodeId = nodeId;
-      head->data.temperature = msg->temperature;
-      head->data.humidity = msg->humidity;
-      head->data.radiation = msg->radiation;
-      head->next = NULL;
-      back = head;
-    }
-    else {
-      back->next = &newNode;
-			back = back->next;
-      back->index = currentIndex;
-			back->data.index = currentIndex;
-			back->data.nodeId = nodeId;
-      back->data.temperature = msg->temperature;
-      back->data.humidity = msg->humidity;
-      back->data.radiation = msg->radiation;
-      back->next = NULL;
-    }
+  void enQueue(SenseMsg msg) {
+		if (isFull())
+			return ;
+
+    queue[back].index = currentIndex;
+		queue[back].nodeId = nodeId;
+    queue[back].temperature = msg.temperature;
+    queue[back].humidity = msg.humidity;
+    queue[back].radiation = msg.radiation;
+
+		
+		back = back + 1;
+		if (back >= QUEUE_MAX_LENGTH)
+			back = back - QUEUE_MAX_LENGTH;
+
     currentIndex ++;
   }
 
-  SenseMsg* deQueue() {
+  SenseMsg deQueue() {
     SenseMsg tmp ;
 
+		tmp.index = -1;
+		tmp.nodeId = -1;
     tmp.temperature = 0;
     tmp.humidity = 0;
     tmp.radiation = 0;
 
     if (isEmpty()) {
-      return NULL;
+      return tmp;
     }
     else {
-      tmp.temperature = head->data.temperature;
-      tmp.humidity = head->data.humidity;
-      tmp.radiation = head->data.radiation;
+			tmp.index = queue[head].index;
+			tmp.nodeId = queue[head].nodeId;
+      tmp.temperature = queue[head].temperature;
+      tmp.humidity = queue[head].humidity;
+      tmp.radiation = queue[head].radiation;
 
-      head = head->next;
+      head = head + 1;
+			if (head >= QUEUE_MAX_LENGTH)
+				head = head - QUEUE_MAX_LENGTH;
 
-      return &tmp;
+      return tmp;
     }
   }
 
 	void GBNSenderSend() {
 		SenseMsg* msg ;
 		int i;
-		struct QueueNode* p = head;
+		int p=head;
 		SenseMsg * payload;
 
 		for (i=0;i<WND_SIZE;i++)
 		{
-			if (p == NULL)
-				break;
-
-			msg = &(p->data);
+			msg = &(queue[p]);
 			
 			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
 			if (payload == NULL) {
 				return;
 			}
+			payload->index = msg->index;
+			payload->nodeId = msg->nodeId;
 			payload->temperature = msg->temperature;
 			payload->humidity = msg->humidity;
 			payload->radiation = msg->radiation;
@@ -123,7 +129,12 @@ implementation {
 				busy = TRUE;
 			}
 
-			p = p->next;
+			if (p == back)
+				break;
+			
+			p = p+1;
+			if (p >= QUEUE_MAX_LENGTH)
+				p = p - QUEUE_MAX_LENGTH;
 		}
 	}
 
@@ -131,7 +142,7 @@ implementation {
 		AckMsg* rcvPayload;
 
 		int AckIndex = 0;
-		struct QueueNode * p = head;
+		int p = head;
 
 		if (len != sizeof(AckMsg)) {
 			return msg;
@@ -142,9 +153,11 @@ implementation {
 		AckIndex = rcvPayload->index;
 
 		// 去除队列中的元素
-		while (p->index <= AckIndex && p!=NULL ){
+		while (queue[p].index <= AckIndex){
 			deQueue();
 			p = head;	
+			if (isEmpty())
+				break;
 		}
 
 		return msg;
@@ -210,7 +223,7 @@ implementation {
 
 		if (checkMsg(&temp) == 0) {
 			res = temp;
-			enQueue(&res);
+			enQueue(res);
 		}
 		call Leds.led0Toggle();
 	}

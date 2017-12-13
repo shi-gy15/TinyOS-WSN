@@ -10,23 +10,25 @@ implementation {
   struct QueueNode* back;
   int currentIndex;
 
-	command void initQueue() {
+	void initQueue() {
 		head = NULL;
     currentIndex = 1;
 	}
 
-	command bool isEmpty() {
+	bool isEmpty() {
 		if (head==NULL)
 			return TRUE;
 		else
 			return FALSE;
 	}
 
-  command void enQueue(SenseMsg* msg) {
+  void enQueue(SenseMsg* msg) {
 		struct QueueNode newNode;
     if (isEmpty()) {
       head = &newNode;
       head->index = currentIndex;
+			head->data.index = currentIndex;
+			head->data.nodeId = nodeId;
       head->data.temperature = msg->temperature;
       head->data.humidity = msg->humidity;
       head->data.radiation = msg->radiation;
@@ -37,6 +39,8 @@ implementation {
       back->next = &newNode;
 			back = back->next;
       back->index = currentIndex;
+			back->data.index = currentIndex;
+			back->data.nodeId = nodeId;
       back->data.temperature = msg->temperature;
       back->data.humidity = msg->humidity;
       back->data.radiation = msg->radiation;
@@ -45,7 +49,7 @@ implementation {
     currentIndex ++;
   }
 
-  command SenseMsg* deQueue() {
+  SenseMsg* deQueue() {
     SenseMsg tmp ;
 
     tmp.temperature = 0;
