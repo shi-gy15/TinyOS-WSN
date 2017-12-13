@@ -26,5 +26,6 @@ implementation {
 	App.ReadRadiation -> SenseR.Read;
 	App.Packet -> ActiveMessageC;
 	App.AMSend -> ActiveMessageC.AMSend[AM_SENSE_MSG];
+	App.Receive -> ActiveMessageC.Receive[AM_ACK_MSG];	
 	App.RadioControl -> ActiveMessageC;
 }
