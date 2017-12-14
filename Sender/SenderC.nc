@@ -225,7 +225,6 @@ implementation {
 	}
 
 	event void SenseTimer.fired() {
-		SenseMsg res;
 		SenseMsg * payload;
 		SenseMsg * msg;
 
@@ -239,9 +238,8 @@ implementation {
 		call ReadHumidity.read();
 		call ReadRadiation.read();
 
-		if (checkMsg(&temp) == 0) {
-			res = temp;
-			enQueue(res);
+		//  if (checkMsg(&temp) == 0) {
+			enQueue(temp);
 
 			// output to screen
 			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
@@ -260,7 +258,7 @@ implementation {
 			if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
 				busy = TRUE;
 			}
-		}
+		// }
 		call Leds.led0Toggle();
 	}
 
