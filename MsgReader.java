@@ -102,11 +102,11 @@ public class MsgReader implements net.tinyos.message.MessageListener {
   public void compileRegex() {
       patterns = new String[]{
           "id",
-          "seqNo",
+          "index",
           "temperature",
           "humidity",
           "radiation",
-          "time"
+          "currentTime"
       };
       regs = new Pattern[patterns.length];
       for (int i = 0; i < regs.length; i++) {
