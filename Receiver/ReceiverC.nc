@@ -20,7 +20,8 @@ implementation {
 	bool sbusy;
 	bool busy;
 	uint16_t ack;
-	message_t pkt;
+	message_t pkt1;
+	message_t pkt2;
     SenseMsg sample;
 
 	event void Boot.booted() {
@@ -68,29 +69,30 @@ implementation {
 		call Leds.led1Toggle();
 
 		//right condition
-		if (rcvPayload->index == ack + 1){
+		//if (rcvPayload->index == ack + 1){
 		    ack++;
 		    //send sensemsg
-		    sndPayload = (SenseMsg*) call SPacket.getPayload(&pkt, sizeof(SenseMsg));
+		    sndPayload = (SenseMsg*) call SPacket.getPayload(&pkt1, sizeof(SenseMsg));
 
 		    if (sndPayload == NULL) {
 			    return NULL;
 		    }
+
 		    sndPayload->radiation = rcvPayload->radiation;
 		    sndPayload->humidity = rcvPayload->humidity;
 		    sndPayload->temperature = rcvPayload->temperature;
-
 		    sndPayload->index = rcvPayload->index;
-				sndPayload->currentTime = rcvPayload->currentTime;
-				sndPayload->nodeId = rcvPayload->nodeId;
+			sndPayload->currentTime = rcvPayload->currentTime;
+			sndPayload->nodeId = rcvPayload->nodeId;
+            //call Leds.led2Toggle();
 
-		    if (call SAMSend.send(AM_BROADCAST_ADDR, &pkt, sizeof(SenseMsg)) == SUCCESS) {
+		    if (call SAMSend.send(AM_BROADCAST_ADDR, &pkt1, sizeof(SenseMsg)) == SUCCESS) {
 			    sbusy = TRUE;
 		    }
-		}
+		//}
 
 		//send ack
-		sndackPayload = (AckMsg*) call Packet.getPayload(&pkt, sizeof(AckMsg));
+		sndackPayload = (AckMsg*) call Packet.getPayload(&pkt2, sizeof(AckMsg));
 
         if (sndackPayload == NULL) {
             return NULL;
@@ -98,7 +100,7 @@ implementation {
 
         sndackPayload->index = ack;
 
-        if (call AMSend.send(AM_BROADCAST_ADDR, &pkt, sizeof(AckMsg)) == SUCCESS) {
+        if (call AMSend.send(AM_BROADCAST_ADDR, &pkt2, sizeof(AckMsg)) == SUCCESS) {
             busy = TRUE;
         }
 
@@ -108,7 +110,7 @@ implementation {
 
     event void AMSend.sendDone(message_t* msg, error_t err) {
 		// todo
-		if (&pkt == msg) {
+		if (&pkt2 == msg) {
 			call Leds.led1Toggle();
 			busy = FALSE;
 		}
@@ -116,8 +118,8 @@ implementation {
 
 	event void SAMSend.sendDone(message_t* msg, error_t err) {
 		// todo
-		if (&pkt == msg) {
-			call Leds.led1Toggle();
+		if (&pkt1 == msg) {
+			call Leds.led2Toggle();
 			sbusy = FALSE;
 		}
 	}
