@@ -217,7 +217,9 @@ implementation {
 	}
 
 	event void SerialControl.startDone(error_t err) {
-		// todo 
+		if (err != SUCCESS){
+		    call SerialControl.start();
+		}
 	}
 
 	event void SerialControl.stopDone(error_t err) {
@@ -246,17 +248,18 @@ implementation {
 			if (payload == NULL) {
 				return;
 			}
-			payload->index = msg->index;
-			payload->nodeId = msg->nodeId;
+			payload->index = 0;
+			payload->nodeId = 0;
 			payload->currentTime = 100;
 
-			payload->temperature = msg->temperature;
-			payload->humidity = msg->humidity;
-			payload->radiation = msg->radiation;
+			payload->temperature = temp.temperature;
+			payload->humidity = temp.humidity;
+			payload->radiation = temp.radiation;
 
 			call Leds.led1Toggle();
 			if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
 				busy = TRUE;
+				call Leds.led2Toggle();
 			}
 		// }
 		call Leds.led0Toggle();

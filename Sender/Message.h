@@ -16,11 +16,8 @@ typedef nx_struct AckMsg{
 } AckMsg;
 
 enum {
-    AM_TEMPERATURE_MSG = 6,
-    AM_HUMIDITY_MSG,
-    AM_RADIATION_MSG,
-    AM_SENSE_MSG = 10,
-    AM_ACK_MSG = 20,
+    AM_SENSEMSG = 10,
+    AM_ACKMSG = 20
 };
 
 #endif
