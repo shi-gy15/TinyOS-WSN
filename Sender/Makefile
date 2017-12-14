@@ -1,5 +1,5 @@
 COMPONENT=SenderAppC
-BUILD_EXTRA_DEPS += Sender.class
+BUILD_EXTRA_DEPS += Receiver.class
 CLEAN_EXTRA = *.class Message.java
 # CFLAGS += -I$(TOSDIR)/lib/T2Hack
 Receiver.class: $(wildcard *.java) Message.java
