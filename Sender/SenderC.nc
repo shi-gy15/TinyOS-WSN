@@ -216,6 +216,14 @@ implementation {
 		// todo
 	}
 
+	event void SerialControl.startDone(error_t err) {
+		// todo 
+	}
+
+	event void SerialControl.stopDone(error_t err) {
+		// todo
+	}
+
 	event void SenseTimer.fired() {
 		SenseMsg res;
 		SenseMsg * payload;
