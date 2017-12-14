@@ -13,6 +13,8 @@ implementation {
 	components ActiveMessageC;
 	components new SensirionSht11C() as SenseTH;
 	components new HamamatsuS1087ParC() as SenseR;
+
+	components SerialActiveMessageC;
 	// T: temperature
 	// H: humidity
 	// R: radiation
@@ -28,4 +30,7 @@ implementation {
 	App.AMSend -> ActiveMessageC.AMSend[AM_SENSE_MSG];
 	App.Receive -> ActiveMessageC.Receive[AM_ACK_MSG];	
 	App.RadioControl -> ActiveMessageC;
+
+	App.SerialAMSend -> SerialActiveMessageC.AMSend[AM_SENSE_MSG];
+	App.SerialControl -> SerialActiveMessageC;
 }

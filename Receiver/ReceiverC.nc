@@ -79,7 +79,10 @@ implementation {
 		    sndPayload->radiation = rcvPayload->radiation;
 		    sndPayload->humidity = rcvPayload->humidity;
 		    sndPayload->temperature = rcvPayload->temperature;
+
 		    sndPayload->index = rcvPayload->index;
+				sndPayload->currentTime = rcvPayload->currentTime;
+				sndPayload->nodeId = rcvPayload->nodeId;
 
 		    if (call SAMSend.send(AM_BROADCAST_ADDR, &pkt, sizeof(SenseMsg)) == SUCCESS) {
 			    sbusy = TRUE;

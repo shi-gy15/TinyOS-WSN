@@ -5,7 +5,7 @@
 #define WND_SIZE 5
 #define QUEUE_MAX_LENGTH 50
 #define SENSE_TIMER_PERIOD 2000
-#define SEND_TIMER_PERIOD 2000
+#define SEND_TIMER_PERIOD 4000
 
 // why not "@safe()"?
 module SenderC {
@@ -20,6 +20,9 @@ module SenderC {
 	uses interface AMSend;
 	uses interface Receive;
 	uses interface SplitControl as RadioControl;
+
+	uses interface SplitControl as SerialControl;	
+	uses interface AMSend as SerialAMSend;
 }
 
 implementation {
@@ -122,7 +125,7 @@ implementation {
 			payload->index = msg->index;
 			payload->nodeId = msg->nodeId;
 			payload->currentTime = 100;
-			
+
 			payload->temperature = msg->temperature;
 			payload->humidity = msg->humidity;
 			payload->radiation = msg->radiation;
@@ -196,6 +199,7 @@ implementation {
 		sample.radiation = 0;
 		//data = NULL;
 		call RadioControl.start();
+		call SerialControl.start();
 	}
 
 	event void RadioControl.startDone(error_t err) {
@@ -214,6 +218,9 @@ implementation {
 
 	event void SenseTimer.fired() {
 		SenseMsg res;
+		SenseMsg * payload;
+		SenseMsg * msg;
+
 		// todo
 		call Leds.led0Toggle();
 		//temp = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
@@ -227,6 +234,24 @@ implementation {
 		if (checkMsg(&temp) == 0) {
 			res = temp;
 			enQueue(res);
+
+			// output to screen
+			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			if (payload == NULL) {
+				return;
+			}
+			payload->index = msg->index;
+			payload->nodeId = msg->nodeId;
+			payload->currentTime = 100;
+
+			payload->temperature = msg->temperature;
+			payload->humidity = msg->humidity;
+			payload->radiation = msg->radiation;
+
+			call Leds.led1Toggle();
+			if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+				busy = TRUE;
+			}
 		}
 		call Leds.led0Toggle();
 	}
@@ -262,6 +287,13 @@ implementation {
 
 	event void AMSend.sendDone(message_t* msg, error_t err) {
 		// todo
+		if (&packet == msg) {
+			call Leds.led1Toggle();
+			busy = FALSE;
+		}
+	}
+
+	event void SerialAMSend.sendDone(message_t* msg, error_t err) {
 		if (&packet == msg) {
 			call Leds.led1Toggle();
 			busy = FALSE;
