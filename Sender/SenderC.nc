@@ -121,10 +121,11 @@ implementation {
 			}
 			payload->index = msg->index;
 			payload->nodeId = msg->nodeId;
+			payload->currentTime = 100;
+			
 			payload->temperature = msg->temperature;
 			payload->humidity = msg->humidity;
 			payload->radiation = msg->radiation;
-			payload->index = msg->index;
 
 			call Leds.led1Toggle();
 			if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
