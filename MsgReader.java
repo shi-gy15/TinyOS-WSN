@@ -69,11 +69,11 @@ public class MsgReader implements net.tinyos.message.MessageListener {
   private Pattern[] regs;
   
   public String wrapper(String raw, int index) {
+      
       switch(index) {
-      case 0: // "id"
+      case 0: // "nodeid"
       case 1: // "seqno"
           return "" + Integer.parseInt(raw, 16) + " ";
-      
       case 2: // temperature
           return String.format("%.2f", (Integer.parseInt(raw, 16) * 0.01 - 40.1)) + "C ";
       case 3: // humidity
@@ -87,6 +87,7 @@ public class MsgReader implements net.tinyos.message.MessageListener {
 
   public void writeMessage(Message msg) throws Exception{
       String str = msg.toString();
+      System.out.println(str);
       Matcher m;
       for (int i = 0; i < regs.length; i++) {
           m = regs[i].matcher(str);
@@ -101,12 +102,12 @@ public class MsgReader implements net.tinyos.message.MessageListener {
 
   public void compileRegex() {
       patterns = new String[]{
-          "id",
-          "seqNo",
+          "nodeId",
+          "index",
           "temperature",
           "humidity",
           "radiation",
-          "time"
+          "currentTime"
       };
       regs = new Pattern[patterns.length];
       for (int i = 0; i < regs.length; i++) {
