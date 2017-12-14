@@ -45,6 +45,10 @@ implementation {
 	int back;
 	int currentIndex;
 
+	int sendStart;
+	int sendEnd;
+	int sendCurrent;
+
 	void initQueue() {
 		head = 0;
     back = 0;
@@ -110,41 +114,58 @@ implementation {
     }
   }
 
-	void GBNSenderSend() {
-		SenseMsg* msg ;
-		int i;
-		int p=head;
+	void sendCurrentPacket() {
 		SenseMsg * payload;
 
+		if (sendCurrent > sendEnd)
+			return;
+		//  send first to other nodes
+		payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+		if (payload == NULL) {
+			return;
+		}
+		payload->index = queue[sendCurrent].index;
+		payload->nodeId = queue[sendCurrent].nodeId;
+		payload->currentTime = 100;
+
+		payload->temperature = queue[sendCurrent].temperature;
+		payload->humidity = queue[sendCurrent].humidity;
+		payload->radiation = queue[sendCurrent].radiation;
+
+		call Leds.led1On();
+		if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+			busy = TRUE;
+		}
+
+		if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+			busy = TRUE;
+		}
+
+		sendCurrent += 1;
+	}
+
+	void GBNSenderSend() {
+		int i;
+		int p=head;		
+
+		sendStart = head;
+
 		for (i=0;i<WND_SIZE;i++)
-		{
-			msg = &(queue[p]);
-			
-			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
-			if (payload == NULL) {
-				return;
-			}
-			payload->index = msg->index;
-			payload->nodeId = msg->nodeId;
-			payload->currentTime = 100;
-
-			payload->temperature = msg->temperature;
-			payload->humidity = msg->humidity;
-			payload->radiation = msg->radiation;
-
-			call Leds.led1Toggle();
-			if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
-				busy = TRUE;
-			}
-
-			if (p == back)
+		{	
+			if (p == back || i == WND_SIZE - 1)
 				break;
 			
 			p = p+1;
 			if (p >= QUEUE_MAX_LENGTH)
 				p = p - QUEUE_MAX_LENGTH;
 		}
+		sendEnd = p;
+
+		sendCurrent = sendStart;
+
+		sendCurrentPacket();
 	}
+
 
 	message_t* GBNSenderReceive(message_t* msg, void* payload, uint8_t len) {
 		AckMsg* rcvPayload;
@@ -159,6 +180,18 @@ implementation {
 		rcvPayload = (AckMsg*) payload;
 		
 		AckIndex = rcvPayload->index;
+
+		// output to screen
+		rcvPayload = (AckMsg*) (call Packet.getPayload(&packet, sizeof(AckMsg)));
+		if (rcvPayload == NULL) {
+			return;
+		}
+		rcvPayload->index = AckIndex;
+
+		call Leds.led1Toggle();
+		if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(AckMsg)) == SUCCESS) {
+			busy = TRUE;
+		}
 
 		// 去除队列中的元素
 		while (queue[p].index <= AckIndex){
@@ -263,23 +296,23 @@ implementation {
 		if (readFlag == 3){
 			enQueue(temp);
 
-			// output to screen
-			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
-			if (payload == NULL) {
-				return;
-			}
-			payload->index = 0;
-			payload->nodeId = nodeId;
-			payload->currentTime = 100;
+			// // output to screen
+			// payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			// if (payload == NULL) {
+			// 	return;
+			// }
+			// payload->index = 0;
+			// payload->nodeId = nodeId;
+			// payload->currentTime = 100;
 
-			payload->temperature = temp.temperature;
-			payload->humidity = temp.humidity;
-			payload->radiation = temp.radiation;
+			// payload->temperature = temp.temperature;
+			// payload->humidity = temp.humidity;
+			// payload->radiation = temp.radiation;
 
-			call Leds.led1Toggle();
-			if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
-				busy = TRUE;
-			}
+			// call Leds.led1Toggle();
+			// if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+			// 	busy = TRUE;
+			// }
 
 			readFlag = 0;
 		}
@@ -296,23 +329,23 @@ implementation {
 		if (readFlag == 3){
 			enQueue(temp);
 
-			// output to screen
-			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
-			if (payload == NULL) {
-				return;
-			}
-			payload->index = 0;
-			payload->nodeId = nodeId;
-			payload->currentTime = 100;
+			// // output to screen
+			// payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			// if (payload == NULL) {
+			// 	return;
+			// }
+			// payload->index = 0;
+			// payload->nodeId = nodeId;
+			// payload->currentTime = 100;
 
-			payload->temperature = temp.temperature;
-			payload->humidity = temp.humidity;
-			payload->radiation = temp.radiation;
+			// payload->temperature = temp.temperature;
+			// payload->humidity = temp.humidity;
+			// payload->radiation = temp.radiation;
 
-			call Leds.led1Toggle();
-			if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
-				busy = TRUE;
-			}
+			// call Leds.led1Toggle();
+			// if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+			// 	busy = TRUE;
+			// }
 
 			readFlag = 0;
 		}
@@ -329,23 +362,23 @@ implementation {
 		if (readFlag == 3){
 			enQueue(temp);
 
-			// output to screen
-			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
-			if (payload == NULL) {
-				return;
-			}
-			payload->index = 0;
-			payload->nodeId = nodeId;
-			payload->currentTime = 100;
+			// // output to screen
+			// payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			// if (payload == NULL) {
+			// 	return;
+			// }
+			// payload->index = 0;
+			// payload->nodeId = nodeId;
+			// payload->currentTime = 100;
 
-			payload->temperature = temp.temperature;
-			payload->humidity = temp.humidity;
-			payload->radiation = temp.radiation;
+			// payload->temperature = temp.temperature;
+			// payload->humidity = temp.humidity;
+			// payload->radiation = temp.radiation;
 
-			call Leds.led1Toggle();
-			if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
-				busy = TRUE;
-			}
+			// call Leds.led1Toggle();
+			// if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+			// 	busy = TRUE;
+			// }
 
 			readFlag = 0;
 		}
@@ -354,14 +387,16 @@ implementation {
 	event void AMSend.sendDone(message_t* msg, error_t err) {
 		// todo
 		if (&packet == msg) {
-			call Leds.led1Toggle();
+			call Leds.led1Off();
 			busy = FALSE;
 		}
+
+		sendCurrentPacket();
 	}
 
 	event void SerialAMSend.sendDone(message_t* msg, error_t err) {
 		if (&packet == msg) {
-			call Leds.led1Toggle();
+			call Leds.led1Off();
 			busy = FALSE;
 		}
 	}
