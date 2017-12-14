@@ -125,6 +125,8 @@ implementation {
 			payload->humidity = msg->humidity;
 			payload->radiation = msg->radiation;
 			payload->index = msg->index;
+
+			call Leds.led1Toggle();
 			if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
 				busy = TRUE;
 			}
@@ -260,7 +262,7 @@ implementation {
 	event void AMSend.sendDone(message_t* msg, error_t err) {
 		// todo
 		if (&packet == msg) {
-			call Leds.led0Toggle();
+			call Leds.led1Toggle();
 			busy = FALSE;
 		}
 	}
