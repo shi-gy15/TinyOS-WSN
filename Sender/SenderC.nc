@@ -5,7 +5,7 @@
 #define WND_SIZE 5
 #define QUEUE_MAX_LENGTH 50
 #define SENSE_TIMER_PERIOD 2000
-#define SEND_TIMER_PERIOD 4000
+#define SEND_TIMER_PERIOD 6000
 
 // why not "@safe()"?
 module SenderC {
@@ -36,6 +36,8 @@ implementation {
 	message_t packet;
 	SenseMsg temp;
 	SenseMsg sample;
+
+	int readFlag = 0;
 
 	// Queue
 	SenseMsg queue[QUEUE_MAX_LENGTH];
@@ -169,8 +171,6 @@ implementation {
 		return msg;
 	}
 
-	
-
 	// check if msg includes right data
 	// return 0 if passes
 	// else return not 0
@@ -190,6 +190,7 @@ implementation {
 	event void Boot.booted() {
 		// todo
 		busy = FALSE;
+		readFlag = 0;
 
 		initQueue();
 
@@ -227,9 +228,6 @@ implementation {
 	}
 
 	event void SenseTimer.fired() {
-		SenseMsg * payload;
-		SenseMsg * msg;
-
 		// todo
 		call Leds.led0Toggle();
 		//temp = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
@@ -240,28 +238,6 @@ implementation {
 		call ReadHumidity.read();
 		call ReadRadiation.read();
 
-		//  if (checkMsg(&temp) == 0) {
-			enQueue(temp);
-
-			// output to screen
-			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
-			if (payload == NULL) {
-				return;
-			}
-			payload->index = 0;
-			payload->nodeId = 0;
-			payload->currentTime = 100;
-
-			payload->temperature = temp.temperature;
-			payload->humidity = temp.humidity;
-			payload->radiation = temp.radiation;
-
-			call Leds.led1Toggle();
-			if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
-				busy = TRUE;
-				call Leds.led2Toggle();
-			}
-		// }
 		call Leds.led0Toggle();
 	}
 
@@ -277,20 +253,101 @@ implementation {
 	}
 
 	event void ReadTemperature.readDone(error_t result, uint16_t val) {
+		SenseMsg * payload;
+		
 		if (result == SUCCESS) {
 			temp.temperature = val;
+		}
+
+		readFlag += 1;
+		if (readFlag == 3){
+			enQueue(temp);
+
+			// output to screen
+			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			if (payload == NULL) {
+				return;
+			}
+			payload->index = 0;
+			payload->nodeId = nodeId;
+			payload->currentTime = 100;
+
+			payload->temperature = temp.temperature;
+			payload->humidity = temp.humidity;
+			payload->radiation = temp.radiation;
+
+			call Leds.led1Toggle();
+			if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+				busy = TRUE;
+			}
+
+			readFlag = 0;
 		}
 	}
 
 	event void ReadHumidity.readDone(error_t result, uint16_t val) {
+		SenseMsg * payload;
+
 		if (result == SUCCESS) {
 			temp.humidity = val;
+		}
+
+		readFlag += 1;
+		if (readFlag == 3){
+			enQueue(temp);
+
+			// output to screen
+			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			if (payload == NULL) {
+				return;
+			}
+			payload->index = 0;
+			payload->nodeId = nodeId;
+			payload->currentTime = 100;
+
+			payload->temperature = temp.temperature;
+			payload->humidity = temp.humidity;
+			payload->radiation = temp.radiation;
+
+			call Leds.led1Toggle();
+			if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+				busy = TRUE;
+			}
+
+			readFlag = 0;
 		}
 	}
 
 	event void ReadRadiation.readDone(error_t result, uint16_t val) {
+		SenseMsg * payload;
+
 		if (result == SUCCESS) {
 			temp.radiation = val;
+		}
+
+		readFlag += 1;
+		if (readFlag == 3){
+			enQueue(temp);
+
+			// output to screen
+			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			if (payload == NULL) {
+				return;
+			}
+			payload->index = 0;
+			payload->nodeId = nodeId;
+			payload->currentTime = 100;
+
+			payload->temperature = temp.temperature;
+			payload->humidity = temp.humidity;
+			payload->radiation = temp.radiation;
+
+			call Leds.led1Toggle();
+			if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+				busy = TRUE;
+			}
+
+			readFlag = 0;
 		}
 	}
 
