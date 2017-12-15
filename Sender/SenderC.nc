@@ -142,6 +142,8 @@ implementation {
 		}
 
 		sendCurrent += 1;
+		if (sendCurrent >= QUEUE_MAX_LENGTH)
+			sendCurrent -= QUEUE_MAX_LENGTH;
 	}
 
 	void GBNSenderSend() {
