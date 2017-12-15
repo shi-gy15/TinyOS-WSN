@@ -56,100 +56,32 @@ import net.tinyos.message.*;
 import net.tinyos.packet.*;
 import net.tinyos.util.*;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.util.regex.*;
-
-public class MsgReader implements net.tinyos.message.MessageListener {
+public class OriMsgReader implements net.tinyos.message.MessageListener {
 
   private MoteIF moteIF;
-  private BufferedWriter fout;
-  private String[] patterns;
-  private Pattern[] regs;
   
-  public String wrapper(String raw, int index) {
-      
-      switch(index) {
-      case 0: // "nodeid"
-      case 1: // "seqno"
-          return "" + Integer.parseInt(raw, 16) + " ";
-      case 2: // temperature
-          return String.format("%.2f", (Integer.parseInt(raw, 16) * 0.01 - 40.1)) + "C ";
-      case 3: // humidity
-      case 4: // radiation
-          return raw + " ";
-      case 5: // time
-          return "" + Integer.parseInt(raw, 16);
-      }
-      return raw;
-  }
-
-  public void writeMessage(Message msg) throws Exception{
-      String str = msg.toString();
-      System.out.println(str);
-      Matcher m;
-      for (int i = 0; i < regs.length; i++) {
-          m = regs[i].matcher(str);
-          if (m.find()) {
-              //fout.write("" + m.group(1) + " ");
-              fout.write(wrapper(m.group(1), i));
-          }
-      }
-      fout.newLine();
-      fout.flush();
-  }
-
-  public void compileRegex() {
-      patterns = new String[]{
-          "nodeId",
-          "index",
-          "temperature",
-          "humidity",
-          "radiation",
-          "currentTime"
-      };
-      regs = new Pattern[patterns.length];
-      for (int i = 0; i < regs.length; i++) {
-          regs[i] = Pattern.compile(patterns[i] + "=0x(\\d+)");
-      }
-  }
-
-
-
-  public MsgReader(String source) throws Exception {
+  public OriMsgReader(String source) throws Exception {
     if (source != null) {
       moteIF = new MoteIF(BuildSource.makePhoenix(source, PrintStreamMessenger.err));
     }
     else {
       moteIF = new MoteIF(BuildSource.makePhoenix(PrintStreamMessenger.err));
     }
-
-    //.
-    fout = new BufferedWriter(new FileWriter("result.txt"));
-    compileRegex();
   }
 
   public void start() {
   }
-
-  
   
   public void messageReceived(int to, Message message) {
     long t = System.currentTimeMillis();
     //    Date d = new Date(t);
-    //System.out.print("" + t + ": ");
-    //System.out.println(message);
-    try {
-      writeMessage(message);
-    } catch(Exception e) {
-      
-    }
+    System.out.print("" + t + ": ");
+    System.out.println(message);
   }
 
   
   private static void usage() {
-    System.err.println("usage: MsgReader [-comm <source>] message-class [message-class ...]");
+    System.err.println("usage: OriMsgReader [-comm <source>] message-class [message-class ...]");
   }
 
   private void addMsgType(Message msg) {
@@ -161,34 +93,34 @@ public class MsgReader implements net.tinyos.message.MessageListener {
     Vector v = new Vector();
     if (args.length > 0) {
       for (int i = 0; i < args.length; i++) {
-	    if (args[i].equals("-comm")) {
-	        source = args[++i];
+	if (args[i].equals("-comm")) {
+	  source = args[++i];
+	}
+	else {
+	  String className = args[i];
+	  try {
+	    Class c = Class.forName(className);
+	    Object packet = c.newInstance();
+	    Message msg = (Message)packet;
+	    if (msg.amType() < 0) {
+		System.err.println(className + " does not have an AM type - ignored");
 	    }
-        else {
-            String className = args[i];
-            try {
-                Class c = Class.forName(className);
-                Object packet = c.newInstance();
-                Message msg = (Message)packet;
-                if (msg.amType() < 0) {
-                    System.err.println(className + " does not have an AM type - ignored");
-                }
-                else {
-                    v.addElement(msg);
-                }
-            }
-            catch (Exception e) {
-                System.err.println(e);
-            }
-        }
+	    else {
+		v.addElement(msg);
+	    }
+	  }
+	  catch (Exception e) {
+	    System.err.println(e);
+	  }
+	}
       }
     }
     else if (args.length != 0) {
-        usage();
-        System.exit(1);
+      usage();
+      System.exit(1);
     }
 
-    MsgReader mr = new MsgReader(source);
+    OriMsgReader mr = new OriMsgReader(source);
     Enumeration msgs = v.elements();
     while (msgs.hasMoreElements()) {
       Message m = (Message)msgs.nextElement();

@@ -61,7 +61,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.util.regex.*;
 
-public class MsgReader implements net.tinyos.message.MessageListener {
+public class MyMsgReader implements net.tinyos.message.MessageListener {
 
   private MoteIF moteIF;
   private BufferedWriter fout;
@@ -117,7 +117,7 @@ public class MsgReader implements net.tinyos.message.MessageListener {
 
 
 
-  public MsgReader(String source) throws Exception {
+  public MyMsgReader(String source) throws Exception {
     if (source != null) {
       moteIF = new MoteIF(BuildSource.makePhoenix(source, PrintStreamMessenger.err));
     }
@@ -149,7 +149,7 @@ public class MsgReader implements net.tinyos.message.MessageListener {
 
   
   private static void usage() {
-    System.err.println("usage: MsgReader [-comm <source>] message-class [message-class ...]");
+    System.err.println("usage: MyMsgReader [-comm <source>] message-class [message-class ...]");
   }
 
   private void addMsgType(Message msg) {
@@ -188,7 +188,7 @@ public class MsgReader implements net.tinyos.message.MessageListener {
         System.exit(1);
     }
 
-    MsgReader mr = new MsgReader(source);
+    MyMsgReader mr = new MyMsgReader(source);
     Enumeration msgs = v.elements();
     while (msgs.hasMoreElements()) {
       Message m = (Message)msgs.nextElement();
