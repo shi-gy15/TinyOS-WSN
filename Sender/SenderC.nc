@@ -43,6 +43,7 @@ implementation {
 	SenseMsg queue[QUEUE_MAX_LENGTH];
 	int head;
 	int back;
+	// 最后一个元素是queue[back-1]
 	int currentIndex;
 
 	int sendStart;
@@ -116,9 +117,13 @@ implementation {
 
 	void sendCurrentPacket() {
 		SenseMsg * payload;
-
-		if (sendCurrent > sendEnd)
+		int test = sendCurrent-1;
+		if (test < 0)
+			test += QUEUE_MAX_LENGTH;
+		
+		if ( test == sendEnd )
 			return;
+
 		//  send first to other nodes
 		payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
 		if (payload == NULL) {
@@ -142,6 +147,8 @@ implementation {
 		}
 
 		sendCurrent += 1;
+		if (sendCurrent >= QUEUE_MAX_LENGTH)
+			sendCurrent -= QUEUE_MAX_LENGTH;
 	}
 
 	void GBNSenderSend() {
@@ -152,7 +159,7 @@ implementation {
 
 		for (i=0;i<WND_SIZE;i++)
 		{	
-			if (p == back || i == WND_SIZE - 1)
+			if (p == back - 1 || i == WND_SIZE - 1)
 				break;
 			
 			p = p+1;
@@ -165,7 +172,6 @@ implementation {
 
 		sendCurrentPacket();
 	}
-
 
 	message_t* GBNSenderReceive(message_t* msg, void* payload, uint8_t len) {
 		AckMsg* rcvPayload;
@@ -187,11 +193,6 @@ implementation {
 			return;
 		}
 		rcvPayload->index = AckIndex;
-
-		call Leds.led1Toggle();
-		if (call SerialAMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(AckMsg)) == SUCCESS) {
-			busy = TRUE;
-		}
 
 		// 去除队列中的元素
 		while (queue[p].index <= AckIndex){
