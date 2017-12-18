@@ -1,5 +1,8 @@
 
 #include "Message.h"
+#include "Queue.h"
+
+#define QUEUE_MAX_LENGTH 50
 
 // why not "@safe()"?
 module ReceiverC {
@@ -23,13 +26,104 @@ implementation {
 	message_t pkt1;
 	message_t pkt2;
     SenseMsg sample;
+	SenseMsg temp;
+
+	// Queue
+	SenseMsg queue[QUEUE_MAX_LENGTH];
+	int head;
+	int back;
 
 	event void Boot.booted() {
 		// todo
 		busy = FALSE;
+		sbusy = FALSE;
 		ack = 0;
+		head = 0;
+		back = 0;
 		call RadioControl.start();
 		call SerialControl.start();
+	}
+
+	bool isEmpty() {
+		if (head==back)
+			return TRUE;
+		else
+			return FALSE;
+	}
+
+	bool isFull() {
+		if (back + 1 == head || back + 1 == head + QUEUE_MAX_LENGTH)
+			return TRUE;
+		else
+			return FALSE;
+	}
+
+	void enQueue(SenseMsg msg) {
+		
+		if (isFull())
+			return ;
+
+		queue[back].index = msg.index;
+		queue[back].nodeId = msg.nodeId;
+    	queue[back].temperature = msg.temperature;
+    	queue[back].humidity = msg.humidity;
+    	queue[back].radiation = msg.radiation;
+		back = back + 1;
+		call Leds.led0Toggle();
+		if (back >= QUEUE_MAX_LENGTH)
+			back = back - QUEUE_MAX_LENGTH;
+
+	}
+
+	SenseMsg deQueue() {
+		SenseMsg tmp ;
+
+		tmp.index = -1;
+		tmp.nodeId = -1;
+    	tmp.temperature = 0;
+    	tmp.humidity = 0;
+    	tmp.radiation = 0;
+
+    	if (isEmpty()) {
+      		return tmp;
+    	}
+    	else {
+			tmp.index = queue[head].index;
+			tmp.nodeId = queue[head].nodeId;
+    		tmp.temperature = queue[head].temperature;
+    		tmp.humidity = queue[head].humidity;
+    		tmp.radiation = queue[head].radiation;
+			head = head + 1;
+			if (head >= QUEUE_MAX_LENGTH)
+				head = head - QUEUE_MAX_LENGTH;
+			call Leds.led1Toggle();
+      		return tmp;
+    	}
+	}
+
+	void sendSenseMsg(){
+		SenseMsg* sndPayload;
+		
+		if(sbusy){
+			return;
+		}
+		sndPayload = (SenseMsg*) call SPacket.getPayload(&pkt1, sizeof(SenseMsg));
+		
+		if (sndPayload == NULL) {
+			 return;
+		}
+
+		sndPayload->index = queue[head].index;
+		sndPayload->nodeId = queue[head].nodeId;
+		sndPayload->temperature = queue[head].temperature;
+		sndPayload->radiation = queue[head].radiation;
+		sndPayload->humidity = queue[head].humidity;
+		deQueue();
+
+		if (call SAMSend.send(AM_BROADCAST_ADDR, &pkt1, sizeof(SenseMsg)) == SUCCESS) {
+			sbusy = TRUE;
+			call Leds.led2Toggle();
+		}
 	}
 
 	event void RadioControl.startDone(error_t err) {
@@ -66,31 +160,24 @@ implementation {
 		}
 
 		rcvPayload = (SenseMsg*) payload;
-		call Leds.led1Toggle();
+
 
 		//right condition
-		//if (rcvPayload->index == ack + 1){
+		if (rcvPayload->index == ack + 1){
 		    ack++;
+			
+			temp.nodeId = rcvPayload->nodeId;
+			temp.index = rcvPayload->index;
+			temp.temperature = rcvPayload->temperature;
+			temp.radiation = rcvPayload->radiation;
+			temp.humidity = rcvPayload->humidity;
+			enQueue(temp);
+
 		    //send sensemsg
-		    sndPayload = (SenseMsg*) call SPacket.getPayload(&pkt1, sizeof(SenseMsg));
-
-		    if (sndPayload == NULL) {
-			    return NULL;
-		    }
-
-		    sndPayload->radiation = rcvPayload->radiation;
-		    sndPayload->humidity = rcvPayload->humidity;
-		    sndPayload->temperature = rcvPayload->temperature;
-		    sndPayload->index = rcvPayload->index;
-			sndPayload->currentTime = rcvPayload->currentTime;
-			sndPayload->nodeId = rcvPayload->nodeId;
-            //call Leds.led2Toggle();
-
-		    if (call SAMSend.send(AM_BROADCAST_ADDR, &pkt1, sizeof(SenseMsg)) == SUCCESS) {
-			    sbusy = TRUE;
-		    }
-		//}
-
+			//call Leds.led1Toggle();
+			sendSenseMsg();
+		}
+		
 		//send ack
 		sndackPayload = (AckMsg*) call Packet.getPayload(&pkt2, sizeof(AckMsg));
 
@@ -111,7 +198,7 @@ implementation {
     event void AMSend.sendDone(message_t* msg, error_t err) {
 		// todo
 		if (&pkt2 == msg) {
-			call Leds.led1Toggle();
+			//call Leds.led1Toggle();
 			busy = FALSE;
 		}
 	}
@@ -119,8 +206,11 @@ implementation {
 	event void SAMSend.sendDone(message_t* msg, error_t err) {
 		// todo
 		if (&pkt1 == msg) {
-			call Leds.led2Toggle();
+			//call Leds.led2Toggle();
 			sbusy = FALSE;
+		}
+		if (!isEmpty()){
+			sendSenseMsg();
 		}
 	}
 }
