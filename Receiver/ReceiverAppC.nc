@@ -13,9 +13,9 @@ implementation {
 	App.Leds -> LedsC.Leds;
 	App.Packet -> ActiveMessageC.Packet;
 	App.SPacket -> SerialActiveMessageC.Packet;
-	App.SAMSend -> SerialActiveMessageC.AMSend[AM_SENSE_MSG];
-	App.AMSend -> ActiveMessageC.AMSend[AM_ACK_MSG];
-	App.Receive -> ActiveMessageC.Receive[AM_SENSE_MSG];
+	App.SAMSend -> SerialActiveMessageC.AMSend[AM_SENSEMSG];
+	App.AMSend -> ActiveMessageC.AMSend[AM_ACKMSG];
+	App.Receive -> ActiveMessageC.Receive[AM_SENSEMSG];
 	App.RadioControl -> ActiveMessageC;
 	App.SerialControl -> SerialActiveMessageC;
 }
