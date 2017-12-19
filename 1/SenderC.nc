@@ -17,8 +17,11 @@ module SenderC {
 	uses interface Read<uint16_t> as ReadHumidity;
 	uses interface Read<uint16_t> as ReadRadiation;
 	uses interface Packet;
-	uses interface AMSend;
-	uses interface Receive;
+	uses interface AMSend as AMSendAck;
+	uses interface AMSend as AMSendMsg;
+	uses interface Receive as ReceiveAck;
+	uses interface Receive as ReceiveMsg;
+
 	uses interface SplitControl as RadioControl;
 
 	uses interface SplitControl as SerialControl;	
@@ -167,6 +170,9 @@ implementation {
 		if (m_test < 0)
 			m_test += QUEUE_MAX_LENGTH;
 		
+		if(busy == TRUE)
+			return;
+		
 		//  send first to other nodes
 		if(m_test < m_sendEnd){
 			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
@@ -182,7 +188,7 @@ implementation {
 			payload->radiation = m_queue[m_sendCurrent].radiation;
 
 			call Leds.led1On();
-			if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+			if (call AMSend.send(0, &packet, sizeof(SenseMsg)) == SUCCESS) {
 				busy = TRUE;
 			}
 
@@ -191,7 +197,7 @@ implementation {
 				m_sendCurrent -= QUEUE_MAX_LENGTH;
 			return;
 		}
-
+		
 		if(r_test < r_sendEnd){
 			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
 			if (payload == NULL) {
@@ -206,7 +212,7 @@ implementation {
 			payload->radiation = r_queue[sendCurrent].radiation;
 
 			call Leds.led1On();
-			if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+			if (call AMSendMsg.send(0, &packet, sizeof(SenseMsg)) == SUCCESS) {
 				busy = TRUE;
 			}
 
@@ -214,6 +220,25 @@ implementation {
 			if (r_sendCurrent >= QUEUE_MAX_LENGTH)
 				r_sendCurrent -= QUEUE_MAX_LENGTH;
 			return;
+		}
+
+		if(r_test == r_sendEnd){
+			sendAck();
+		}
+	}
+
+	void sendAck(){
+		AckMsg* sndackPayload;
+		sndackPayload = (AckMsg*) call Packet.getPayload(&pkt2, sizeof(AckMsg));
+
+		if (sndackPayload == NULL) {
+			return NULL;
+		}
+
+		sndackPayload->index = ack;
+
+		if (call AMSendAck.send(2, &pkt2, sizeof(AckMsg)) == SUCCESS) {
+			busy = TRUE;
 		}
 	}
 
@@ -256,60 +281,54 @@ implementation {
 		sendCurrentPacket();
 	}
 
-	message_t* GBNSenderReceive(message_t* msg, void* payload, uint8_t len) {
+	message_t* ReceiveAck(message_t* msg, void* payload, uint8_t len) {
 		AckMsg* rcvPayload;
 		SenseMsg* rcvSensePayload;
-		AckMsg* sndackPayload;
+		
 
 		int AckIndex = 0;
 		int id = 0;
 		int p = m_head;
-
-		if (len == sizeof(AckMsg)) {
-			rcvPayload = (AckMsg*) payload;
-
-			AckIndex = rcvPayload->index;
-			id = rcvPayload->nodeId;
-			// 去除队列中的元素
-
-			while (m_queue[p].index <= AckIndex && id == m_nodeId){
-				deQueue(0);
-				p = m_head;	
-				if (isEmpty(0))
-					break;
-			}
-
-			while (m_queue[p].index <= AckIndex && id == r_nodeId){
-				deQueue(1);
-				p = r_head;
-				if (isEmpty(1)))
-					break;
-			}
-
-			return msg;
-		}
+		int q = r_head;
 		
-		if (len == sizeof(SenseMsg)) {
-			rcvSensePayload = (AckMsg*) payload;
-			if(rcvSensePayload->index == ack + 1){
-				enQueue(*rcvSensePayload,1);
-				ack++;
-			}
-
-			sndackPayload = (AckMsg*) call Packet.getPayload(&pkt2, sizeof(AckMsg));
-
-			if (sndackPayload == NULL) {
-				return NULL;
-			}
-
-			sndackPayload->index = ack;
-
-			if (call AMSend.send(AM_BROADCAST_ADDR, &pkt2, sizeof(AckMsg)) == SUCCESS) {
-				busy = TRUE;
-			}
+		if (len != sizeof(AckMsg))
 			return msg;
-		}
 		
+		
+		rcvPayload = (AckMsg*) payload;
+
+		AckIndex = rcvPayload->index;
+		id = rcvPayload->nodeId;
+		// 去除队列中的元素
+
+		while (m_queue[p].index <= AckIndex && id == m_nodeId){
+			deQueue(0);
+			p = m_head;	
+			if (isEmpty(0))
+				break;
+		}
+
+		while (r_queue[q].index <= AckIndex && id == r_nodeId){
+			deQueue(1);
+			q = r_head;
+			if (isEmpty(1)))
+				break;
+		}
+
+		return msg;
+
+	}
+
+	message_t* ReceiveMsg(message_t* msg, void* payload, uint8_t len) {
+
+		if (len != sizeof(SenseMsg))
+			return msg;
+		rcvSensePayload = (AckMsg*) payload;
+		if(rcvSensePayload->index == ack + 1){
+			enQueue(*rcvSensePayload,1);
+			ack++;
+		}
+
 		return msg;
 	}
 
@@ -437,7 +456,7 @@ implementation {
 		}
 	}
 
-	event void AMSend.sendDone(message_t* msg, error_t err) {
+	event void AMSendAck.sendDone(message_t* msg, error_t err) {
 		// todo
 		if (&packet == msg) {
 			call Leds.led1Off();
@@ -447,6 +466,15 @@ implementation {
 		sendCurrentPacket();
 	}
 
+	event void AMSendMsg.sendDone(message_t* msg, error_t err) {
+		// todo
+		if (&packet == msg) {
+			call Leds.led1Off();
+			busy = FALSE;
+		}
+
+	}
+
 	event void SerialAMSend.sendDone(message_t* msg, error_t err) {
 		if (&packet == msg) {
 			call Leds.led1Off();
@@ -454,7 +482,11 @@ implementation {
 		}
 	}
 
-	event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
-		return GBNSenderReceive(msg, payload, len);
+	event message_t* ReceiveAck.receive(message_t* msg, void* payload, uint8_t len) {
+		return ReceiveAck(msg, payload, len);
+	}
+
+	event message_t* ReceiveMsg.receive(message_t* msg, void* payload, uint8_t len) {
+		return ReceiveMsg(msg, payload, len);
 	}
 }
