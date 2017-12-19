@@ -61,61 +61,99 @@ import java.io.File;
 import java.io.FileWriter;
 import java.util.regex.*;
 
+class MsgPacket {
+    static int MAX_ITEMS = 50;
+    private static String[] patterns = {
+        "nodeId",
+        "index",
+        "temperature",
+        "humidity",
+        "radiation",
+        "currentTime"
+    };
+    private static Pattern[] regs;
+    private static BufferedWriter fout;
+    static List<MsgPacket> lis;
+    private static boolean hasInited = false;
+
+    int[] datas;
+    String raw;
+
+    private MsgPacket() {
+
+    }
+
+    static MsgPacket form(String src) {
+        MsgPacket packet = new MsgPacket();
+        packet.raw = src;
+        Matcher m;
+        packet.datas = new int[regs.length];
+        for (int i = 0; i < regs.length; i++) {
+            m = regs[i].matcher(src);
+            if (m.find()) {
+                packet.datas[i] = hex2int(m.group(1));
+            }
+        }
+        lis.add(packet);
+        if (lis.size() > MAX_ITEMS) {
+            lis.remove(0);
+        }
+        return packet;
+    }
+
+    void display() throws Exception{
+        for (int i = 0; i < this.datas.length; i++) {
+            fout.write(wrapper(datas[i], i));
+        }
+        fout.newLine();
+        fout.flush();
+    }
+
+    static void init() throws Exception{
+        if (hasInited) {
+            return;
+        }
+        fout = new BufferedWriter(new FileWriter("result.txt"));
+        compileRegex();
+        lis = new ArrayList<>();
+        hasInited = true;
+    }
+
+    private static void compileRegex() {
+        String msgFormat = "=0x([0-9a-fA-F]+)";
+        regs = new Pattern[patterns.length];
+        for (int i = 0; i < regs.length; i++) {
+            regs[i] = Pattern.compile(patterns[i] + msgFormat);
+        }
+    }
+
+    private static int hex2int(String raw) {
+        return Integer.parseInt(raw, 16);
+    }
+
+    private static String wrapper(int val, int index) {
+
+        switch(index) {
+            case 0: // "nodeid"
+            case 1: // "index"
+                return "" + val + " ";
+            case 2: // temperature
+                return String.format("%.2f", (val * 0.01 - 40.1)) + "C ";
+            case 3: // humidity
+            case 4: // radiation
+                return val + " ";
+            case 5: // currentTime
+            default:
+                return "" + val;
+        }
+    }
+}
+
+
 public class MyMsgReader implements net.tinyos.message.MessageListener {
 
   private MoteIF moteIF;
-  private BufferedWriter fout;
-  private String[] patterns;
-  private Pattern[] regs;
   
-  public String wrapper(String raw, int index) {
-      
-      switch(index) {
-      case 0: // "nodeid"
-      case 1: // "seqno"
-          return "" + Integer.parseInt(raw, 16) + " ";
-      case 2: // temperature
-          return String.format("%.2f", (Integer.parseInt(raw, 16) * 0.01 - 40.1)) + "C ";
-      case 3: // humidity
-      case 4: // radiation
-          return raw + " ";
-      case 5: // time
-          return "" + Integer.parseInt(raw, 16);
-      }
-      return raw;
-  }
-
-  public void writeMessage(Message msg) throws Exception{
-      String str = msg.toString();
-      System.out.println(str);
-      Matcher m;
-      for (int i = 0; i < regs.length; i++) {
-          m = regs[i].matcher(str);
-          if (m.find()) {
-              //fout.write("" + m.group(1) + " ");
-              fout.write(wrapper(m.group(1), i));
-          }
-      }
-      fout.newLine();
-      fout.flush();
-  }
-
-  public void compileRegex() {
-      patterns = new String[]{
-          "nodeId",
-          "index",
-          "temperature",
-          "humidity",
-          "radiation",
-          "currentTime"
-      };
-      regs = new Pattern[patterns.length];
-      for (int i = 0; i < regs.length; i++) {
-          regs[i] = Pattern.compile(patterns[i] + "=0x(\\d+)");
-      }
-  }
-
-
 
   public MyMsgReader(String source) throws Exception {
     if (source != null) {
@@ -126,8 +164,9 @@ public class MyMsgReader implements net.tinyos.message.MessageListener {
     }
 
     //.
-    fout = new BufferedWriter(new FileWriter("result.txt"));
-    compileRegex();
+    
+    //compileRegex();
+    MsgPacket.init();
   }
 
   public void start() {
@@ -141,7 +180,9 @@ public class MyMsgReader implements net.tinyos.message.MessageListener {
     //System.out.print("" + t + ": ");
     //System.out.println(message);
     try {
-      writeMessage(message);
+        String str = message.toString();
+        System.out.println(str);
+        MsgPacket.form(str).display();
     } catch(Exception e) {
       
     }
