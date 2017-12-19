@@ -11,6 +11,9 @@ implementation {
 	components new TimerMilliC() as SenseTimer;
 	components new TimerMilliC() as SendTimer;
 	components ActiveMessageC;
+	components new AMSenderC(AM_SENSEMSG) as Packet_AMSend;
+	components new AMReceiverC(AM_ACKMSG) as Ack_AMReceive;
+	components new AMReceiverC(AM_WORKMSG) as Work_AMReceive;
 	components new SensirionSht11C() as SenseTH;
 	components new HamamatsuS1087ParC() as SenseR;
 
@@ -27,10 +30,12 @@ implementation {
 	App.ReadHumidity -> SenseTH.Humidity;
 	App.ReadRadiation -> SenseR.Read;
 	App.Packet -> ActiveMessageC;
-	App.AMSend -> ActiveMessageC.AMSend[AM_SENSEMSG];
-	App.Receive -> ActiveMessageC.Receive[AM_ACKMSG];	
+	App.AMSend -> Packet_AMSend;
+	App.Receive -> Ack_AMReceive;	
 	App.RadioControl -> ActiveMessageC;
 
 	App.SerialAMSend -> SerialActiveMessageC.AMSend[AM_SENSEMSG];
 	App.SerialControl -> SerialActiveMessageC;
+
+	App.StartReceive -> Work_AMReceive;
 }
