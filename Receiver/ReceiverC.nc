@@ -68,6 +68,8 @@ implementation {
     	queue[back].temperature = msg.temperature;
     	queue[back].humidity = msg.humidity;
     	queue[back].radiation = msg.radiation;
+		queue[back].currentTime = msg.currentTime;
+
 		back = back + 1;
 		call Leds.led0Toggle();
 		if (back >= QUEUE_MAX_LENGTH)
@@ -83,6 +85,7 @@ implementation {
     	tmp.temperature = 0;
     	tmp.humidity = 0;
     	tmp.radiation = 0;
+		tmp.currentTime = 0;
 
     	if (isEmpty()) {
       		return tmp;
@@ -93,6 +96,7 @@ implementation {
     		tmp.temperature = queue[head].temperature;
     		tmp.humidity = queue[head].humidity;
     		tmp.radiation = queue[head].radiation;
+			tmp.currentTime = queue[head].currentTime;
 			head = head + 1;
 			if (head >= QUEUE_MAX_LENGTH)
 				head = head - QUEUE_MAX_LENGTH;
@@ -118,6 +122,8 @@ implementation {
 		sndPayload->temperature = queue[head].temperature;
 		sndPayload->radiation = queue[head].radiation;
 		sndPayload->humidity = queue[head].humidity;
+		sndPayload->currentTime = queue[head].currentTime;
+
 		deQueue();
 
 		if (call SAMSend.send(AM_BROADCAST_ADDR, &pkt1, sizeof(SenseMsg)) == SUCCESS) {
@@ -171,6 +177,8 @@ implementation {
 			temp.temperature = rcvPayload->temperature;
 			temp.radiation = rcvPayload->radiation;
 			temp.humidity = rcvPayload->humidity;
+			temp.currentTime = rcvPayload->currentTime;
+			
 			enQueue(temp);
 
 		    //send sensemsg

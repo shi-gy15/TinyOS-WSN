@@ -4,7 +4,7 @@
 typedef nx_struct SenseMsg{
     nx_uint16_t index;
     nx_uint16_t nodeId;
-    nx_uint16_t currentTime;
+    nx_uint32_t currentTime;
 
     nx_uint16_t temperature;
     nx_uint16_t humidity;
