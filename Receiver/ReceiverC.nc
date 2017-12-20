@@ -11,6 +11,10 @@ module ReceiverC {
 		interface Leds;
 		interface Packet;
 		interface Packet as SPacket;
+
+		interface AMSend as WorkSend;
+		interface PacketAcknowledgements as WorkAcks;
+
 		interface AMSend as SAMSend;
 		interface AMSend;
 		interface Receive;
@@ -25,9 +29,18 @@ implementation {
 	uint16_t ack;
 	message_t pkt1;
 	message_t pkt2;
+	message_t work_pkt;
     SenseMsg sample;
 	SenseMsg temp;
 
+	//配置参数
+	int STATUS = 1;
+	int WND_SIZE = 5;
+	int SENSE_TIMER_PERIOD = 2000;
+	int SEND_TIMER_PERIOD = 6000;
+	//配置消息
+	WorkMsg instruction; 
+	
 	// Queue
 	SenseMsg queue[QUEUE_MAX_LENGTH];
 	int head;
@@ -132,6 +145,25 @@ implementation {
 		}
 	}
 
+	void sendWorkMsg() {
+		WorkMsg* sndPayload;
+		
+		sndPayload = (WorkMsg*) call SPacket.getPayload(&work_pkt, sizeof(WorkMsg));
+		
+		if (sndPayload == NULL) {
+			 return;
+		}
+
+		sndPayload->status = STATUS;
+		sndPayload->windowSize = WND_SIZE;
+		sndPayload->sendPeriod = SEND_TIMER_PERIOD;
+		sndPayload->sensePeriod = SENSE_TIMER_PERIOD;
+
+		if (call WorkSend.send(AM_BROADCAST_ADDR, &work_pkt, sizeof(WorkMsg)) == SUCCESS) {
+			sbusy = TRUE;
+		}
+	}
+
 	event void RadioControl.startDone(error_t err) {
 		// todo
 		if (err != SUCCESS) {
@@ -219,6 +251,14 @@ implementation {
 		}
 		if (!isEmpty()){
 			sendSenseMsg();
+		}
+	}
+
+	event void WorkSend.sendDone(message_t* msg, error_t err) {
+		if (&work_pkt == msg) {
+			//  如果发送失败 重新发送
+			//if (!call WorkAcks.wasAcked())
+			//	sendWorkMsg();
 		}
 	}
 }

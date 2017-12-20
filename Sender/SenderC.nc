@@ -21,7 +21,7 @@ module SenderC {
 	uses interface SplitControl as SerialControl;	
 	uses interface AMSend as SerialAMSend;
 
-	uses interface Receive as StartReceive;
+	uses interface Receive as WorkReceive;
 }
 
 implementation {
@@ -159,6 +159,9 @@ implementation {
 		int i;
 		int p=head;		
 
+		if ( isEmpty() )
+			return;
+
 		sendStart = head;
 
 		for (i=0;i<WND_SIZE;i++)
@@ -218,7 +221,9 @@ implementation {
 			SEND_TIMER_PERIOD = rcvPayload->sendPeriod;
 			SENSE_TIMER_PERIOD = rcvPayload->sensePeriod;
 			WND_SIZE = rcvPayload->windowSize;
-			
+
+			//结束采集和发送
+			stopTimer();
 			//初始化队列
 			initQueue();
 			//开始采集和发送
@@ -360,7 +365,7 @@ implementation {
 			return msg;
 	}
 
-	event message_t* StartReceive.receive(message_t* msg, void* payload, uint8_t len) {
+	event message_t* WorkReceive.receive(message_t* msg, void* payload, uint8_t len) {
 		if (len == sizeof(WorkMsg))
 			return WorkInstruct(msg, payload, len);
 		else
