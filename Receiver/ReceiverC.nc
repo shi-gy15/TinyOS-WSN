@@ -26,7 +26,7 @@ module ReceiverC {
 implementation {
 	bool sbusy;
 	bool busy;
-	uint16_t ack;
+	uint16_t ack[10];
 	message_t pkt1;
 	message_t pkt2;
 	message_t work_pkt;
@@ -50,7 +50,8 @@ implementation {
 		// todo
 		busy = FALSE;
 		sbusy = FALSE;
-		ack = 0;
+		ack[1] = 0;
+		ack[2] = 0;
 		head = 0;
 		back = 0;
 		call RadioControl.start();
@@ -188,21 +189,24 @@ implementation {
 	}
 
 	event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
-
 		SenseMsg* rcvPayload;
 		SenseMsg* sndPayload;
 		AckMsg* sndackPayload;
+		int nodeId;
 
+		call Leds.led1On();
 		if (len != sizeof(SenseMsg)) {
 			return msg;
 		}
 
 		rcvPayload = (SenseMsg*) payload;
 
+		nodeId = rcvPayload->nodeId;
 
 		//right condition
-		if (rcvPayload->index == ack + 1){
-		    ack++;
+		if (rcvPayload->index == ack[nodeId] + 1){
+			call Leds.led2On();
+			ack[nodeId]++;
 			
 			temp.nodeId = rcvPayload->nodeId;
 			temp.index = rcvPayload->index;
@@ -213,7 +217,7 @@ implementation {
 			
 			enQueue(temp);
 
-		    //send sensemsg
+			//send sensemsg
 			//call Leds.led1Toggle();
 			sendSenseMsg();
 		}
@@ -225,8 +229,8 @@ implementation {
             return NULL;
         }
 
-        sndackPayload->index = ack;
-		sndackPayload->nodeId = rcvPayload->nodeId;
+        sndackPayload->index = ack[nodeId];
+		sndackPayload->nodeId = nodeId;
 		
         if (call AMSend.send(1, &pkt2, sizeof(AckMsg)) == SUCCESS) {
             busy = TRUE;
