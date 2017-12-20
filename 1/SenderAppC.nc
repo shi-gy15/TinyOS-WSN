@@ -35,8 +35,8 @@ implementation {
 	App.AMSendAck -> AMSendAck.AMSend;
 	App.AMSendMsg -> AMSendMsg.AMSend;
 
-	App.AMReceiveAck -> AMReceiveAck.Receive;
-	App.AMReceiveMsg -> AMReceiveMsg.Receive;
+	App.Receive -> AMReceiveAck;
+	App.MsgReceive -> AMReceiveMsg;
 
 	App.RadioControl -> ActiveMessageC;
 
