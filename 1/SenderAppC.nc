@@ -32,8 +32,8 @@ implementation {
 	App.ReadHumidity -> SenseTH.Humidity;
 	App.ReadRadiation -> SenseR.Read;
 	App.Packet -> ActiveMessageC;
-	App.AMSendAck -> AMSendAck.AMSend;
-	App.AMSendMsg -> AMSendMsg.AMSend;
+	App.AMSendAck -> AMSendAck;
+	App.AMSendMsg -> AMSendMsg;
 
 	App.Receive -> AMReceiveAck;
 	App.MsgReceive -> AMReceiveMsg;
