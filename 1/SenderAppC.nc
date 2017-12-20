@@ -11,8 +11,8 @@ implementation {
 	components new TimerMilliC() as SenseTimer;
 	components new TimerMilliC() as SendTimer;
 	components ActiveMessageC;
-	components new AMSendC(AM_ACKMSG) as AMSendAck;
-	components new AMSendC(AM_SENSEMSG) as AMSendMsg;
+	components new AMSenderC(AM_ACKMSG) as AMSendAck;
+	components new AMSenderC(AM_SENSEMSG) as AMSendMsg;
 	components new AMReceiverC(AM_ACKMSG) as AMReceiveAck;
 	components new AMReceiverC(AM_SENSEMSG) as AMReceiveMsg;
 
@@ -35,8 +35,8 @@ implementation {
 	App.AMSendAck -> AMSendAck.AMSend;
 	App.AMSendMsg -> AMSendMsg.AMSend;
 
-	App.ReceiveAck -> AMReceiveAck.Receive;
-	App.ReceiveMsg -> AMReceiveMsg.Receive;
+	App.AMReceiveAck -> AMReceiveAck.Receive;
+	App.AMReceiveMsg -> AMReceiveMsg.Receive;
 
 	App.RadioControl -> ActiveMessageC;
 

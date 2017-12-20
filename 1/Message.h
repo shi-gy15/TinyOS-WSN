@@ -13,6 +13,7 @@ typedef nx_struct SenseMsg{
 
 typedef nx_struct AckMsg{
     nx_uint16_t index;
+    nx_uint16_t nodeId;
 } AckMsg;
 
 enum {

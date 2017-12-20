@@ -19,8 +19,8 @@ module SenderC {
 	uses interface Packet;
 	uses interface AMSend as AMSendAck;
 	uses interface AMSend as AMSendMsg;
-	uses interface Receive as ReceiveAck;
-	uses interface Receive as ReceiveMsg;
+	uses interface Receive as AMReceiveAck;
+	uses interface Receive as AMReceiveMsg;
 
 	uses interface SplitControl as RadioControl;
 
@@ -38,7 +38,7 @@ implementation {
 
 	bool busy;
 	uint16_t ack;
-	message_t packet;
+	message_t pkt1;
 	message_t pkt2;
 	SenseMsg temp;
 	SenseMsg sample;
@@ -60,7 +60,6 @@ implementation {
 	int r_head;
 	int r_back;
 	// 最后一个元素是queue[back-1]
-	int r_currentIndex;
 	int r_sendStart;
 	int r_sendEnd;
 	int r_sendCurrent;
@@ -71,7 +70,6 @@ implementation {
 		m_currentIndex = 1;
 		r_head = 0;
     	r_back = 0;
-		r_currentIndex = 1;
 	}
 
 	bool isEmpty(int flag) {
@@ -112,9 +110,9 @@ implementation {
 
 			m_queue[m_back].index = m_currentIndex;
 			m_queue[m_back].nodeId = m_nodeId;
-			m_queue[back].temperature = msg.temperature;
-			m_queue[back].humidity = msg.humidity;
-			m_queue[back].radiation = msg.radiation;
+			m_queue[m_back].temperature = msg.temperature;
+			m_queue[m_back].humidity = msg.humidity;
+			m_queue[m_back].radiation = msg.radiation;
 
 			
 			m_back = m_back + 1;
@@ -125,18 +123,17 @@ implementation {
 		}
 		if(flag == 1){
 
-			r_queue[r_back].index = r_currentIndex;
-			r_queue[r_back].nodeId = r_nodeId;
-			r_queue[back].temperature = msg.temperature;
-			r_queue[back].humidity = msg.humidity;
-			r_queue[back].radiation = msg.radiation;
+			r_queue[r_back].index = msg.index;
+			r_queue[r_back].nodeId = msg.nodeId;
+			r_queue[r_back].temperature = msg.temperature;
+			r_queue[r_back].humidity = msg.humidity;
+			r_queue[r_back].radiation = msg.radiation;
+			r_queue[r_back].currentTime = msg.currentTime;
 
 			
 			r_back = r_back + 1;
 			if (r_back >= QUEUE_MAX_LENGTH)
 				r_back = r_back - QUEUE_MAX_LENGTH;
-
-			r_currentIndex ++;
 		}
 	}
 
@@ -162,20 +159,39 @@ implementation {
 		}
 	}
 
+	void sendAck(){
+		AckMsg* sndackPayload;
+		sndackPayload = (AckMsg*) call Packet.getPayload(&pkt2, sizeof(AckMsg));
+
+		if (sndackPayload == NULL) {
+			return;
+		}
+
+		sndackPayload->index = ack;
+		sndackPayload->nodeId = 1;
+
+		if (call AMSendAck.send(2, &pkt2, sizeof(AckMsg)) == SUCCESS) {
+			busy = TRUE;
+		}
+	}
+
 	void sendCurrentPacket() {
 		SenseMsg * payload;
 
 		int m_test = m_sendCurrent - 1;
 		int r_test = r_sendCurrent - 1;
-		if (m_test < 0)
+
+		if(m_test < 0)
 			m_test += QUEUE_MAX_LENGTH;
+		if(r_test < 0)
+			r_test += QUEUE_MAX_LENGTH;
 		
 		if(busy == TRUE)
 			return;
 		
 		//  send first to other nodes
 		if(m_test < m_sendEnd){
-			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			payload = (SenseMsg*) (call Packet.getPayload(&pkt1, sizeof(SenseMsg)));
 			if (payload == NULL) {
 				return;
 			}
@@ -188,7 +204,7 @@ implementation {
 			payload->radiation = m_queue[m_sendCurrent].radiation;
 
 			call Leds.led1On();
-			if (call AMSend.send(0, &packet, sizeof(SenseMsg)) == SUCCESS) {
+			if (call AMSendMsg.send(0, &pkt1, sizeof(SenseMsg)) == SUCCESS) {
 				busy = TRUE;
 			}
 
@@ -199,20 +215,20 @@ implementation {
 		}
 		
 		if(r_test < r_sendEnd){
-			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			payload = (SenseMsg*) (call Packet.getPayload(&pkt1, sizeof(SenseMsg)));
 			if (payload == NULL) {
 				return;
 			}
-			payload->index = r_queue[sendCurrent].index;
-			payload->nodeId = r_queue[sendCurrent].nodeId;
+			payload->index = r_queue[r_sendCurrent].index;
+			payload->nodeId = r_queue[r_sendCurrent].nodeId;
 			payload->currentTime = 100;
 
-			payload->temperature = r_queue[sendCurrent].temperature;
-			payload->humidity = r_queue[sendCurrent].humidity;
-			payload->radiation = r_queue[sendCurrent].radiation;
+			payload->temperature = r_queue[r_sendCurrent].temperature;
+			payload->humidity = r_queue[r_sendCurrent].humidity;
+			payload->radiation = r_queue[r_sendCurrent].radiation;
 
 			call Leds.led1On();
-			if (call AMSendMsg.send(0, &packet, sizeof(SenseMsg)) == SUCCESS) {
+			if (call AMSendMsg.send(0, &pkt1, sizeof(SenseMsg)) == SUCCESS) {
 				busy = TRUE;
 			}
 
@@ -224,21 +240,6 @@ implementation {
 
 		if(r_test == r_sendEnd){
 			sendAck();
-		}
-	}
-
-	void sendAck(){
-		AckMsg* sndackPayload;
-		sndackPayload = (AckMsg*) call Packet.getPayload(&pkt2, sizeof(AckMsg));
-
-		if (sndackPayload == NULL) {
-			return NULL;
-		}
-
-		sndackPayload->index = ack;
-
-		if (call AMSendAck.send(2, &pkt2, sizeof(AckMsg)) == SUCCESS) {
-			busy = TRUE;
 		}
 	}
 
@@ -262,7 +263,7 @@ implementation {
 
 		m_sendEnd = p;
 
-		m_sendCurrent = sendStart;
+		m_sendCurrent = m_sendStart;
 
 		for (i=0;i<WND_SIZE;i++)
 		{	
@@ -276,16 +277,14 @@ implementation {
 		
 		r_sendEnd = q;
 
-		r_sendCurrent = sendStart;
+		r_sendCurrent = r_sendStart;
 
 		sendCurrentPacket();
 	}
 
 	message_t* ReceiveAck(message_t* msg, void* payload, uint8_t len) {
 		AckMsg* rcvPayload;
-		SenseMsg* rcvSensePayload;
 		
-
 		int AckIndex = 0;
 		int id = 0;
 		int p = m_head;
@@ -293,8 +292,7 @@ implementation {
 		
 		if (len != sizeof(AckMsg))
 			return msg;
-		
-		
+	
 		rcvPayload = (AckMsg*) payload;
 
 		AckIndex = rcvPayload->index;
@@ -311,7 +309,7 @@ implementation {
 		while (r_queue[q].index <= AckIndex && id == r_nodeId){
 			deQueue(1);
 			q = r_head;
-			if (isEmpty(1)))
+			if (isEmpty(1))
 				break;
 		}
 
@@ -321,9 +319,13 @@ implementation {
 
 	message_t* ReceiveMsg(message_t* msg, void* payload, uint8_t len) {
 
+		SenseMsg* rcvSensePayload;
+
 		if (len != sizeof(SenseMsg))
 			return msg;
-		rcvSensePayload = (AckMsg*) payload;
+
+		rcvSensePayload = (SenseMsg*) payload;
+
 		if(rcvSensePayload->index == ack + 1){
 			enQueue(*rcvSensePayload,1);
 			ack++;
@@ -458,7 +460,7 @@ implementation {
 
 	event void AMSendAck.sendDone(message_t* msg, error_t err) {
 		// todo
-		if (&packet == msg) {
+		if (&pkt2 == msg) {
 			call Leds.led1Off();
 			busy = FALSE;
 		}
@@ -468,7 +470,7 @@ implementation {
 
 	event void AMSendMsg.sendDone(message_t* msg, error_t err) {
 		// todo
-		if (&packet == msg) {
+		if (&pkt1 == msg) {
 			call Leds.led1Off();
 			busy = FALSE;
 		}
@@ -476,17 +478,17 @@ implementation {
 	}
 
 	event void SerialAMSend.sendDone(message_t* msg, error_t err) {
-		if (&packet == msg) {
+		if (&pkt1 == msg) {
 			call Leds.led1Off();
 			busy = FALSE;
 		}
 	}
 
-	event message_t* ReceiveAck.receive(message_t* msg, void* payload, uint8_t len) {
+	event message_t* AMReceiveAck.receive(message_t* msg, void* payload, uint8_t len) {
 		return ReceiveAck(msg, payload, len);
 	}
 
-	event message_t* ReceiveMsg.receive(message_t* msg, void* payload, uint8_t len) {
+	event message_t* AMReceiveMsg.receive(message_t* msg, void* payload, uint8_t len) {
 		return ReceiveMsg(msg, payload, len);
 	}
 }
