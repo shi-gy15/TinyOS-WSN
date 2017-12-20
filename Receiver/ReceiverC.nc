@@ -36,8 +36,8 @@ implementation {
 	//配置参数
 	int STATUS = 1;
 	int WND_SIZE = 5;
-	int SENSE_TIMER_PERIOD = 2000;
-	int SEND_TIMER_PERIOD = 6000;
+	int SENSE_TIMER_PERIOD = 500;
+	int SEND_TIMER_PERIOD = 1000;
 	//配置消息
 	WorkMsg instruction; 
 	
@@ -170,6 +170,9 @@ implementation {
 		if (err != SUCCESS) {
 			call RadioControl.start();
 		}
+		else {
+			sendWorkMsg();
+		}
 		//call Leds.led0Toggle();
 	}
 
@@ -261,6 +264,7 @@ implementation {
 
 	event void WorkSend.sendDone(message_t* msg, error_t err) {
 		if (&work_pkt == msg) {
+			sbusy = FALSE;
 			//  如果发送失败 重新发送
 			//if (!call WorkAcks.wasAcked())
 			//	sendWorkMsg();

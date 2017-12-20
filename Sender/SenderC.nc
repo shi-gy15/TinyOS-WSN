@@ -1,10 +1,8 @@
 
 #include "Message.h"
-#include "Queue.h"
 
 #define QUEUE_MAX_LENGTH 50
 
-// why not "@safe()"?
 module SenderC {
 	uses interface Boot;
 	uses interface Timer<TMilli> as SenseTimer;
@@ -27,8 +25,8 @@ module SenderC {
 implementation {
 	//配置参数
 	int WND_SIZE = 5;
-	int SENSE_TIMER_PERIOD = 2000;
-	int SEND_TIMER_PERIOD = 6000;
+	int SENSE_TIMER_PERIOD = 500;
+	int SEND_TIMER_PERIOD = 1000;
 
 	bool busy;//
 	message_t packet;
@@ -251,7 +249,7 @@ implementation {
 	event void RadioControl.startDone(error_t err) {
 		// todo
 		if (err == SUCCESS) {
-			startTimer();
+			//  startTimer();
 		} else {
 			call RadioControl.start();
 		}

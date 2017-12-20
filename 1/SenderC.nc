@@ -1,13 +1,8 @@
 
 #include "Message.h"
-#include "Queue.h"
 
-#define WND_SIZE 5
 #define QUEUE_MAX_LENGTH 50
-#define SENSE_TIMER_PERIOD 2000
-#define SEND_TIMER_PERIOD 6000
 
-// why not "@safe()"?
 module SenderC {
 	uses interface Boot;
 	uses interface Timer<TMilli> as SenseTimer;
@@ -21,6 +16,7 @@ module SenderC {
 	uses interface AMSend as AMSendMsg;
 	uses interface Receive;
 	uses interface Receive as MsgReceive;
+	uses interface Receive as WorkReceive;
 
 	uses interface SplitControl as RadioControl;
 
@@ -29,8 +25,10 @@ module SenderC {
 }
 
 implementation {
-	// led0(red): sense
-	// led2(blue): send
+	//配置参数
+	int WND_SIZE = 5;
+	int SENSE_TIMER_PERIOD = 500;
+	int SEND_TIMER_PERIOD = 1000;
 
 	//nodeId
 	int m_nodeId = 1;
@@ -41,7 +39,6 @@ implementation {
 	message_t pkt1;
 	message_t pkt2;
 	SenseMsg temp;
-	SenseMsg sample;
 
 	int readFlag = 0;
 
@@ -63,6 +60,16 @@ implementation {
 	int r_sendStart;
 	int r_sendEnd;
 	int r_sendCurrent;
+
+	void startTimer() {
+		call SenseTimer.startPeriodic(SENSE_TIMER_PERIOD);
+		call SendTimer.startPeriodic(SEND_TIMER_PERIOD);
+	}
+
+	void stopTimer() {
+		call SenseTimer.stop();
+		call SendTimer.stop();	
+	}
 
 	void initQueue() {
 		m_head = 0;
@@ -346,21 +353,37 @@ implementation {
 		return msg;
 	}
 
-	// check if msg includes right data
-	// return 0 if passes
-	// else return not 0
-	uint8_t checkMsg(SenseMsg* msg) {
-		if (msg == NULL) {
-			return 1;
-		}
-		if (msg->temperature == sample.temperature ||
-			msg->humidity == sample.humidity ||
-			msg->radiation == sample.radiation) {
-				return 2;
-			}
-		return 0;
-	}
+	message_t* WorkInstruct(message_t* msg, void* payload, uint8_t len) {
+		WorkMsg* rcvPayload;
+		int status;
 
+		if (len != sizeof(WorkMsg)) {
+			return msg;
+		}
+
+		rcvPayload = (WorkMsg*) payload;
+		
+		status = rcvPayload->status;
+
+		if (status == 1){	// 1 开始
+			SEND_TIMER_PERIOD = rcvPayload->sendPeriod;
+			SENSE_TIMER_PERIOD = rcvPayload->sensePeriod;
+			WND_SIZE = rcvPayload->windowSize;
+
+			//结束采集和发送
+			stopTimer();
+			//初始化队列
+			initQueue();
+			//开始采集和发送
+			startTimer();
+		}
+		else {
+			//结束采集和发送
+			stopTimer();
+		}
+
+		return msg;
+	}
 
 	event void Boot.booted() {
 		// todo
@@ -370,11 +393,6 @@ implementation {
 
 		initQueue();
 
-		// init sample
-		sample.temperature = 0;
-		sample.humidity = 0;
-		sample.radiation = 0;
-		//data = NULL;
 		call RadioControl.start();
 		call SerialControl.start();
 	}
@@ -382,8 +400,7 @@ implementation {
 	event void RadioControl.startDone(error_t err) {
 		// todo
 		if (err == SUCCESS) {
-			call SenseTimer.startPeriodic(SENSE_TIMER_PERIOD);
-			call SendTimer.startPeriodic(SEND_TIMER_PERIOD);
+			//  startTimer();
 		} else {
 			call RadioControl.start();
 		}
@@ -405,8 +422,6 @@ implementation {
 
 	event void SenseTimer.fired() {
 		// todo
-		
-		//temp = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
 		temp.temperature = 0;
 		temp.humidity = 0;
 		temp.radiation = 0;
@@ -414,8 +429,6 @@ implementation {
 		call ReadTemperature.read();
 		call ReadHumidity.read();
 		call ReadRadiation.read();
-
-		
 	}
 
 	event void SendTimer.fired() {
@@ -503,5 +516,12 @@ implementation {
 
 	event message_t* MsgReceive.receive(message_t* msg, void* payload, uint8_t len) {
 		return ReceiveMsg(msg, payload, len);
+	}
+
+	event message_t* WorkReceive.receive(message_t* msg, void* payload, uint8_t len) {
+		if (len == sizeof(WorkMsg))
+			return WorkInstruct(msg, payload, len);
+		else
+			return msg;
 	}
 }

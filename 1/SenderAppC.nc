@@ -15,6 +15,7 @@ implementation {
 	components new AMSenderC(AM_SENSEMSG) as AMSendMsg;
 	components new AMReceiverC(AM_ACKMSG) as AMReceiveAck;
 	components new AMReceiverC(AM_SENSEMSG) as AMReceiveMsg;
+	components new AMReceiverC(AM_WORKMSG) as AMReceiveWork;
 
 	components new SensirionSht11C() as SenseTH;
 	components new HamamatsuS1087ParC() as SenseR;
@@ -37,6 +38,7 @@ implementation {
 
 	App.Receive -> AMReceiveAck;
 	App.MsgReceive -> AMReceiveMsg;
+	App.WorkReceive -> AMReceiveWork;
 
 	App.RadioControl -> ActiveMessageC;
 
