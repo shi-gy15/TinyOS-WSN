@@ -146,7 +146,7 @@ implementation {
 		payload->radiation = queue[sendCurrent].radiation;
 
 		call Leds.led1On();
-		if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(SenseMsg)) == SUCCESS) {
+		if (call AMSend.send(1, &packet, sizeof(SenseMsg)) == SUCCESS) {
 			busy = TRUE;
 		}
 
