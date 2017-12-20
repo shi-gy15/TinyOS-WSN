@@ -113,6 +113,7 @@ implementation {
 			m_queue[m_back].temperature = msg.temperature;
 			m_queue[m_back].humidity = msg.humidity;
 			m_queue[m_back].radiation = msg.radiation;
+			m_queue[m_back].currentTime = msg.currentTime;
 
 			
 			m_back = m_back + 1;
@@ -147,6 +148,8 @@ implementation {
     		m_head = m_head + 1;
 			if (m_head >= QUEUE_MAX_LENGTH)
 				m_head = m_head - QUEUE_MAX_LENGTH;
+			
+			//call Leds.led0Toggle();
 
       		return;
 		}
@@ -190,54 +193,56 @@ implementation {
 			return;
 		
 		//  send first to other nodes
-		if(m_test < m_sendEnd){
-			payload = (SenseMsg*) (call Packet.getPayload(&pkt1, sizeof(SenseMsg)));
-			if (payload == NULL) {
+		if(!isEmpty(0)){
+			if(m_test != m_sendEnd){
+				payload = (SenseMsg*) (call Packet.getPayload(&pkt1, sizeof(SenseMsg)));
+				if (payload == NULL) {
+					return;
+				}
+				payload->index = m_queue[m_sendCurrent].index;
+				payload->nodeId = m_queue[m_sendCurrent].nodeId;
+				payload->currentTime = m_queue[m_sendCurrent].currentTime;
+
+				payload->temperature = m_queue[m_sendCurrent].temperature;
+				payload->humidity = m_queue[m_sendCurrent].humidity;
+				payload->radiation = m_queue[m_sendCurrent].radiation;
+
+				call Leds.led1On();
+				if (call AMSendMsg.send(0, &pkt1, sizeof(SenseMsg)) == SUCCESS) {
+					busy = TRUE;
+				}
+
+				m_sendCurrent += 1;
+				if (m_sendCurrent >= QUEUE_MAX_LENGTH)
+					m_sendCurrent -= QUEUE_MAX_LENGTH;
 				return;
 			}
-			payload->index = m_queue[m_sendCurrent].index;
-			payload->nodeId = m_queue[m_sendCurrent].nodeId;
-			payload->currentTime = 100;
-
-			payload->temperature = m_queue[m_sendCurrent].temperature;
-			payload->humidity = m_queue[m_sendCurrent].humidity;
-			payload->radiation = m_queue[m_sendCurrent].radiation;
-
-			call Leds.led1On();
-			if (call AMSendMsg.send(0, &pkt1, sizeof(SenseMsg)) == SUCCESS) {
-				busy = TRUE;
-			}
-
-			m_sendCurrent += 1;
-			if (m_sendCurrent >= QUEUE_MAX_LENGTH)
-				m_sendCurrent -= QUEUE_MAX_LENGTH;
-			return;
 		}
-		
-		if(r_test < r_sendEnd){
-			payload = (SenseMsg*) (call Packet.getPayload(&pkt1, sizeof(SenseMsg)));
-			if (payload == NULL) {
+		if(!isEmpty(1)){
+			if(r_test != r_sendEnd){
+				payload = (SenseMsg*) (call Packet.getPayload(&pkt1, sizeof(SenseMsg)));
+				if (payload == NULL) {
+					return;
+				}
+				payload->index = r_queue[r_sendCurrent].index;
+				payload->nodeId = r_queue[r_sendCurrent].nodeId;
+				payload->currentTime = r_queue[r_sendCurrent].currentTime;
+
+				payload->temperature = r_queue[r_sendCurrent].temperature;
+				payload->humidity = r_queue[r_sendCurrent].humidity;
+				payload->radiation = r_queue[r_sendCurrent].radiation;
+
+				//call Leds.led1On();
+				if (call AMSendMsg.send(0, &pkt1, sizeof(SenseMsg)) == SUCCESS) {
+					busy = TRUE;
+				}
+
+				r_sendCurrent += 1;
+				if (r_sendCurrent >= QUEUE_MAX_LENGTH)
+					r_sendCurrent -= QUEUE_MAX_LENGTH;
 				return;
 			}
-			payload->index = r_queue[r_sendCurrent].index;
-			payload->nodeId = r_queue[r_sendCurrent].nodeId;
-			payload->currentTime = 100;
-
-			payload->temperature = r_queue[r_sendCurrent].temperature;
-			payload->humidity = r_queue[r_sendCurrent].humidity;
-			payload->radiation = r_queue[r_sendCurrent].radiation;
-
-			call Leds.led1On();
-			if (call AMSendMsg.send(0, &pkt1, sizeof(SenseMsg)) == SUCCESS) {
-				busy = TRUE;
-			}
-
-			r_sendCurrent += 1;
-			if (r_sendCurrent >= QUEUE_MAX_LENGTH)
-				r_sendCurrent -= QUEUE_MAX_LENGTH;
-			return;
 		}
-
 		if(r_test == r_sendEnd){
 			sendAck();
 		}
@@ -260,7 +265,7 @@ implementation {
 			if (p >= QUEUE_MAX_LENGTH)
 				p = p - QUEUE_MAX_LENGTH;
 		}
-
+		
 		m_sendEnd = p;
 
 		m_sendCurrent = m_sendStart;
@@ -278,7 +283,7 @@ implementation {
 		r_sendEnd = q;
 
 		r_sendCurrent = r_sendStart;
-
+		
 		sendCurrentPacket();
 	}
 
@@ -290,6 +295,8 @@ implementation {
 		int p = m_head;
 		int q = r_head;
 		
+		
+		
 		if (len != sizeof(AckMsg))
 			return msg;
 	
@@ -298,19 +305,24 @@ implementation {
 		AckIndex = rcvPayload->index;
 		id = rcvPayload->nodeId;
 		// 去除队列中的元素
+		if(id == m_nodeId){
 
-		while (m_queue[p].index <= AckIndex && id == m_nodeId){
-			deQueue(0);
-			p = m_head;	
-			if (isEmpty(0))
-				break;
+			while (m_queue[p].index <= AckIndex){
+				call Leds.led0Toggle();
+				deQueue(0);
+				p = m_head;	
+				if (isEmpty(0))
+					break;
+			}
 		}
-
-		while (r_queue[q].index <= AckIndex && id == r_nodeId){
-			deQueue(1);
-			q = r_head;
-			if (isEmpty(1))
-				break;
+		
+		if(id == r_nodeId){
+			while (r_queue[q].index <= AckIndex){
+				deQueue(1);
+				q = r_head;
+				if (isEmpty(1))
+					break;
+			}
 		}
 
 		return msg;
@@ -393,16 +405,17 @@ implementation {
 
 	event void SenseTimer.fired() {
 		// todo
-		call Leds.led0Toggle();
+		
 		//temp = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
 		temp.temperature = 0;
 		temp.humidity = 0;
 		temp.radiation = 0;
+		temp.currentTime = call SenseTimer.getNow();
 		call ReadTemperature.read();
 		call ReadHumidity.read();
 		call ReadRadiation.read();
 
-		call Leds.led0Toggle();
+		
 	}
 
 	event void SendTimer.fired() {
@@ -465,7 +478,7 @@ implementation {
 			busy = FALSE;
 		}
 
-		sendCurrentPacket();
+		
 	}
 
 	event void AMSendMsg.sendDone(message_t* msg, error_t err) {
@@ -474,7 +487,7 @@ implementation {
 			call Leds.led1Off();
 			busy = FALSE;
 		}
-
+		sendCurrentPacket();
 	}
 
 	event void SerialAMSend.sendDone(message_t* msg, error_t err) {
