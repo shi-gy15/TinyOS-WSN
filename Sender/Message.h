@@ -12,6 +12,7 @@ typedef nx_struct SenseMsg{
 } SenseMsg;
 
 typedef nx_struct AckMsg{
+    nx_uint16_t nodeId;
     nx_uint16_t index;
 } AckMsg;
 

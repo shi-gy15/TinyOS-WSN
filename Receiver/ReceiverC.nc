@@ -186,8 +186,9 @@ implementation {
         }
 
         sndackPayload->index = ack;
+		sndackPayload->nodeId = rcvPayload->nodeId;
 		
-        if (call AMSend.send(AM_BROADCAST_ADDR, &pkt2, sizeof(AckMsg)) == SUCCESS) {
+        if (call AMSend.send(1, &pkt2, sizeof(AckMsg)) == SUCCESS) {
             busy = TRUE;
         }
 
