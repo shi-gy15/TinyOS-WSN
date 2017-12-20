@@ -19,8 +19,8 @@ module SenderC {
 	uses interface Packet;
 	uses interface AMSend as AMSendAck;
 	uses interface AMSend as AMSendMsg;
-	uses interface Receive as AMReceiveAck;
-	uses interface Receive as AMReceiveMsg;
+	uses interface Receive;
+	uses interface Receive as MsgReceive;
 
 	uses interface SplitControl as RadioControl;
 
@@ -484,11 +484,11 @@ implementation {
 		}
 	}
 
-	event message_t* AMReceiveAck.receive(message_t* msg, void* payload, uint8_t len) {
+	event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
 		return ReceiveAck(msg, payload, len);
 	}
 
-	event message_t* AMReceiveMsg.receive(message_t* msg, void* payload, uint8_t len) {
+	event message_t* MsgReceive.receive(message_t* msg, void* payload, uint8_t len) {
 		return ReceiveMsg(msg, payload, len);
 	}
 }
