@@ -30,12 +30,12 @@ implementation {
 	App.ReadHumidity -> SenseTH.Humidity;
 	App.ReadRadiation -> SenseR.Read;
 	App.Packet -> ActiveMessageC;
-	App.AMSend -> Packet_AMSend;
-	App.Receive -> Ack_AMReceive;	
+	App.AMSend -> Packet_AMSend.AMSend;
+	App.Receive -> Ack_AMReceive.Receive;	
 	App.RadioControl -> ActiveMessageC;
 
 	App.SerialAMSend -> SerialActiveMessageC.AMSend[AM_SENSEMSG];
 	App.SerialControl -> SerialActiveMessageC;
 
-	App.StartReceive -> Work_AMReceive;
+	App.WorkReceive -> Work_AMReceive.Receive;
 }
