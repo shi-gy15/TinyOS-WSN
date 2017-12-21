@@ -64,6 +64,8 @@ import java.util.regex.*;
 
 
 import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
+
 import javax.swing.*;
 
 import java.lang.Math;
@@ -301,11 +303,18 @@ class MyCanvas extends JPanel {
     private static Point origin = new Point(Const.ORIGIN_X, Const.ORIGIN_Y);
     private static Point axisX = new Point(Const.AXIS_X_X, Const.AXIS_X_Y);
     private static Point axisY = new Point(Const.AXIS_Y_X, Const.AXIS_Y_Y);
+    private SimpleDateFormat timeForm = new SimpleDateFormat("HH:mm:ss.ff");
 
     int nodeIDSwitch;
 
+    private Date startTime;
+
     MyCanvas() {
         this.nodeIDSwitch = 1;
+    }
+
+    void setStartTime(Date t) {
+        this.startTime = t;
     }
 
     static Point calc(Character type, int val, int index) {
@@ -411,11 +420,15 @@ class MyCanvas extends JPanel {
                 break;
         }
 
-        int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_SINGLE);
+        //int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_SINGLE);
+        int length = MsgPacket.lis.size();
         Point lastPoint = null;
         int idCount = 0;
         MsgPacket packet;
         for (int i = 0; i < length; i++) {
+            if (idCount >= Const.MAX_POINT_SINGLE) {
+                break;
+            }
             packet = MsgPacket.lis.get(i);
             if (packet.getValue("nodeId") == nodeIDSwitch) {
                 Point point = calc(t, packet.getValue(key), idCount);
@@ -431,18 +444,26 @@ class MyCanvas extends JPanel {
 
     }
 
+    String calcTime(int stamp) {
+        return timeForm.format(this.startTime.getTime() + stamp);
+    }
+
     private void paintCoordinate(Graphics2D g) {
         g.setFont(Const.COORDINATE_FONT);
-        int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_SINGLE);
+        //int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_SINGLE);
+        int length = MsgPacket.lis.size();
         int idCount = 0;
         MsgPacket packet;
         for (int i = 0; i < length; i++) {
+            if (idCount >= Const.MAX_POINT_SINGLE) {
+                break;
+            }
             packet = MsgPacket.lis.get(i);
             if (packet.getValue("nodeId") == nodeIDSwitch) {
                 if (idCount % Const.COORDINATE_INTEGRAL == 0) {
                     Point point = calc('x', 0, idCount);
-                    int data = packet.getValue("currentTime");
-                    g.drawChars(("" + data).toCharArray(), 0, ("" + data).length(),
+                    String timeinfo = calcTime(packet.getValue("currentTime"));
+                    g.drawChars(timeinfo.toCharArray(), 0, timeinfo.length(),
                             point.x, point.y + Const.COORDINATE_FONT_SIZE);
                 }
                 idCount++;
@@ -462,6 +483,7 @@ class SwingChart {
     private FrequencyBtnClickListener setListener;
     private JTextField frequencyInput;
     private MyMsgReader user;
+    Date startTime;
 
     static synchronized SwingChart getInstance() {
         if (test == null) {
@@ -549,6 +571,8 @@ class SwingChart {
     }
 
     private void callSendStartMsg() {
+        startTime = new Date();
+        this.myc.setStartTime(startTime);
         this.user.sendStartCommand(getFrequency());
     }
 
