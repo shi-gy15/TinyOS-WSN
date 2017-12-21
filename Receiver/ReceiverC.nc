@@ -174,7 +174,7 @@ implementation {
 			call RadioControl.start();
 		}
 		else {
-			sendWorkMsg();
+			// sendWorkMsg();
 		}
 		//call Leds.led0Toggle();
 	}
@@ -249,10 +249,12 @@ implementation {
 	event message_t* WorkReceive.receive(message_t* msg, void* payload, uint8_t len) {	
 		WorkMsg* rcvPayload;
 
-		if (len != sizeof(SenseMsg)) {
+		if (len != sizeof(WorkMsg)) {
+			call Leds.led1On();
 			return msg;
 		}
 
+		call Leds.led2On();
 		rcvPayload = (WorkMsg*) payload;
 		STATUS = rcvPayload->status;
 		SEND_TIMER_PERIOD = rcvPayload->sendPeriod;

@@ -10,6 +10,8 @@ implementation {
 	components MainC, LedsC;
 	components new TimerMilliC() as SenseTimer;
 	components new TimerMilliC() as SendTimer;
+	components new TimerMilliC() as ResetTimer;
+
 	components ActiveMessageC;
 	components new AMSenderC(AM_ACKMSG) as AMSendAck;
 	components new AMSenderC(AM_SENSEMSG) as AMSendMsg;
@@ -29,6 +31,7 @@ implementation {
 	App.Leds -> LedsC;
 	App.SenseTimer -> SenseTimer;
 	App.SendTimer -> SendTimer;
+	App.ResetTimer -> ResetTimer;
 	App.ReadTemperature -> SenseTH.Temperature;
 	App.ReadHumidity -> SenseTH.Humidity;
 	App.ReadRadiation -> SenseR.Read;

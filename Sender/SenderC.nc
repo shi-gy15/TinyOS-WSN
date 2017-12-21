@@ -7,6 +7,7 @@ module SenderC {
 	uses interface Boot;
 	uses interface Timer<TMilli> as SenseTimer;
 	uses interface Timer<TMilli> as SendTimer;
+	uses interface Timer<TMilli> as ResetTimer;
 	uses interface Leds;
 	uses interface Read<uint16_t> as ReadTemperature;
 	uses interface Read<uint16_t> as ReadHumidity;
@@ -40,7 +41,7 @@ implementation {
 	int head;
 	int back;
 	// 最后一个元素是queue[back-1]
-	int currentIndex;
+	int currentIndex = 1;
 
 	int sendStart;
 	int sendEnd;
@@ -60,7 +61,6 @@ implementation {
 	void initQueue() {
 		head = 0;
     	back = 0;
-		currentIndex = 1;
 	}
 
 	bool isEmpty() {
@@ -225,10 +225,8 @@ implementation {
 
 			//结束采集和发送
 			stopTimer();
-			//初始化队列
-			initQueue();
-			//开始采集和发送
-			startTimer();
+
+			call ResetTimer.startOneShot(1000);
 		}
 		else {
 			//结束采集和发送
@@ -295,6 +293,15 @@ implementation {
 		GBNSenderSend();
 
 		call Leds.led2Toggle();
+	}
+
+	event void ResetTimer.fired() {
+		busy = FALSE;
+		readFlag = 0;
+		//初始化队列
+		initQueue();
+		//开始采集和发送
+		startTimer();
 	}
 
 	event void ReadTemperature.readDone(error_t result, uint16_t val) {
