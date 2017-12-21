@@ -23,4 +23,6 @@ implementation {
 	App.Receive -> Packet_AMReceiver;
 	App.RadioControl -> ActiveMessageC;
 	App.SerialControl -> SerialActiveMessageC;
+
+	App.WorkReceive -> SerialActiveMessageC.Receive[AM_WORKMSG];
 }

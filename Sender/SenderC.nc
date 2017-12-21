@@ -27,6 +27,7 @@ implementation {
 	int WND_SIZE = 5;
 	int SENSE_TIMER_PERIOD = 500;
 	int SEND_TIMER_PERIOD = 1000;
+	uint32_t startTime;
 
 	bool busy;//
 	message_t packet;
@@ -48,6 +49,7 @@ implementation {
 	void startTimer() {
 		call SenseTimer.startPeriodic(SENSE_TIMER_PERIOD);
 		call SendTimer.startPeriodic(SEND_TIMER_PERIOD);
+		startTime = call SenseTimer.getNow();
 	}
 
 	void stopTimer() {
@@ -130,27 +132,28 @@ implementation {
 		if ( test == sendEnd )
 			return;
 
-		//  send first to other nodes
-		payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
-		if (payload == NULL) {
-			return;
+		if ( !isEmpty() ){
+			payload = (SenseMsg*) (call Packet.getPayload(&packet, sizeof(SenseMsg)));
+			if (payload == NULL) {
+				return;
+			}
+			payload->index = queue[sendCurrent].index;
+			payload->nodeId = queue[sendCurrent].nodeId;
+			payload->currentTime = queue[sendCurrent].currentTime;
+
+			payload->temperature = queue[sendCurrent].temperature;
+			payload->humidity = queue[sendCurrent].humidity;
+			payload->radiation = queue[sendCurrent].radiation;
+
+			call Leds.led1On();
+			if (call AMSend.send(1, &packet, sizeof(SenseMsg)) == SUCCESS) {
+				busy = TRUE;
+			}
+
+			sendCurrent += 1;
+			if (sendCurrent >= QUEUE_MAX_LENGTH)
+				sendCurrent -= QUEUE_MAX_LENGTH;
 		}
-		payload->index = queue[sendCurrent].index;
-		payload->nodeId = queue[sendCurrent].nodeId;
-		payload->currentTime = queue[sendCurrent].currentTime;
-
-		payload->temperature = queue[sendCurrent].temperature;
-		payload->humidity = queue[sendCurrent].humidity;
-		payload->radiation = queue[sendCurrent].radiation;
-
-		call Leds.led1On();
-		if (call AMSend.send(1, &packet, sizeof(SenseMsg)) == SUCCESS) {
-			busy = TRUE;
-		}
-
-		sendCurrent += 1;
-		if (sendCurrent >= QUEUE_MAX_LENGTH)
-			sendCurrent -= QUEUE_MAX_LENGTH;
 	}
 
 	void GBNSenderSend() {
@@ -275,7 +278,7 @@ implementation {
 		temp.temperature = 0;
 		temp.humidity = 0;
 		temp.radiation = 0;
-		temp.currentTime = call SenseTimer.getNow();
+		temp.currentTime = call SenseTimer.getNow() - startTime;
 		call ReadTemperature.read();
 		call ReadHumidity.read();
 		call ReadRadiation.read();

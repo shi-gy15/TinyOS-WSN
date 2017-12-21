@@ -29,6 +29,7 @@ implementation {
 	int WND_SIZE = 5;
 	int SENSE_TIMER_PERIOD = 500;
 	int SEND_TIMER_PERIOD = 1000;
+	uint32_t startTime;
 
 	//nodeId
 	int m_nodeId = 1;
@@ -64,6 +65,7 @@ implementation {
 	void startTimer() {
 		call SenseTimer.startPeriodic(SENSE_TIMER_PERIOD);
 		call SendTimer.startPeriodic(SEND_TIMER_PERIOD);
+		startTime = call SenseTimer.getNow();
 	}
 
 	void stopTimer() {
@@ -350,6 +352,8 @@ implementation {
 			ack++;
 		}
 
+		sendAck();
+
 		return msg;
 	}
 
@@ -425,7 +429,7 @@ implementation {
 		temp.temperature = 0;
 		temp.humidity = 0;
 		temp.radiation = 0;
-		temp.currentTime = call SenseTimer.getNow();
+		temp.currentTime = call SenseTimer.getNow() - startTime;
 		call ReadTemperature.read();
 		call ReadHumidity.read();
 		call ReadRadiation.read();

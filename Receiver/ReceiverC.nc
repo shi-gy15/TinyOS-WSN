@@ -13,11 +13,14 @@ module ReceiverC {
 		interface Packet as SPacket;
 
 		interface AMSend as WorkSend;
+		interface Receive as WorkReceive;
 		interface PacketAcknowledgements as WorkAcks;
 
 		interface AMSend as SAMSend;
 		interface AMSend;
 		interface Receive;
+
+
 		interface SplitControl as RadioControl;
 		interface SplitControl as SerialControl;
 	}
@@ -241,6 +244,23 @@ implementation {
 
 	    return msg;
 
+	}
+
+	event message_t* WorkReceive.receive(message_t* msg, void* payload, uint8_t len) {	
+		WorkMsg* rcvPayload;
+
+		if (len != sizeof(SenseMsg)) {
+			return msg;
+		}
+
+		rcvPayload = (WorkMsg*) payload;
+		STATUS = rcvPayload->status;
+		SEND_TIMER_PERIOD = rcvPayload->sendPeriod;
+		SENSE_TIMER_PERIOD = rcvPayload->sensePeriod;
+		WND_SIZE = rcvPayload->windowSize;
+
+		sendWorkMsg();
+	    return msg;
 	}
 
     event void AMSend.sendDone(message_t* msg, error_t err) {
