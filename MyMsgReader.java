@@ -106,16 +106,16 @@ class Const {
     static final Color POINT_RADIATION_COLOR = new Color(64, 64, 192);
 
     // limit of temperature
-    static final int TEMPERATURE_MAX = 1000;
-    static final int TEMPERATURE_MIN = 600;
+    static final int TEMPERATURE_MAX = 6700;
+    static final int TEMPERATURE_MIN = 6300;
 
     // limit of humidity
-    static final int HUMIDITY_MAX = 1000;
-    static final int HUMIDITY_MIN = 600;
+    static final int HUMIDITY_MAX = 1100;
+    static final int HUMIDITY_MIN = 900;
 
-    // limit of RADIATION
-    static final int RADIATION_MAX = 1000;
-    static final int RADIATION_MIN = 600;
+    // limit of radiation
+    static final int RADIATION_MAX = 500;
+    static final int RADIATION_MIN = 0;
 
     // max point number
     static final int MAX_POINT_NUM = MsgPacket.MAX_ITEMS;
@@ -160,10 +160,25 @@ class Const {
     // button position
     static final int BUTTON_X = 300;
     static final int BUTTON_Y = 0;
+
+    // frequency
+    static final int SAMPLING_FREQUENCY = 100;
+
+    // frequency button
+    static final int FREQUENCY_BUTTON_X = 800;
+    static final int FREQUENCY_BOTTON_Y = 0;
+
+    // frequency input field
+    static final int FREQUENCY_INPUT_X = 500;
+    static final int FREQUENCY_INPUT_Y = 0;
+    static final int FREQUENCY_WIDTH = 100;
+    static final int FREQUENCY_HEIGHT = 80;
+
+
 }
 
 class MsgPacket {
-    static int MAX_ITEMS = 40;
+    static int MAX_ITEMS = 80;
     private static String[] patterns = {
         "nodeId",
         "index",
@@ -511,9 +526,6 @@ class SwingChart {
         }
     }
 }
-
-
-
 
 public class MyMsgReader implements net.tinyos.message.MessageListener {
 
