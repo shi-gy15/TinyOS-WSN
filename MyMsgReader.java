@@ -59,8 +59,11 @@ import net.tinyos.util.*;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.util.regex.*;
 
+
+import java.lang.reflect.Method;
 import javax.swing.*;
 
 import java.lang.Math;
@@ -82,7 +85,7 @@ class Const {
     // padding
     static final int PADDING_TOP = 30;
     static final int PADDING_BOTTOM = 80;
-    static final int PADDING_LEFT = 80;
+    static final int PADDING_LEFT = 50;
     static final int PADDING_RIGHT = 100;
 
     // origin
@@ -162,7 +165,7 @@ class Const {
     static final int BUTTON_Y = 0;
 
     // frequency
-    static final int SAMPLING_FREQUENCY = 100;
+    static final int SAMPLING_FREQUENCY = 500;
 
     // frequency button
     static final int FREQUENCY_BUTTON_X = 800;
@@ -173,6 +176,9 @@ class Const {
     static final int FREQUENCY_INPUT_Y = 0;
     static final int FREQUENCY_WIDTH = 100;
     static final int FREQUENCY_HEIGHT = 80;
+
+    // single chart
+    static final int MAX_POINT_SINGLE = 40;
 
 
 }
@@ -299,13 +305,13 @@ class MyCanvas extends JPanel {
     int nodeIDSwitch;
 
     MyCanvas() {
-        this.nodeIDSwitch = 2;
+        this.nodeIDSwitch = 1;
     }
 
     static Point calc(Character type, int val, int index) {
         // auto cast to integer
         Point res = new Point();
-        res.x = origin.x + (axisX.x - origin.x) * index / Const.MAX_POINT_NUM;
+        res.x = origin.x + (axisX.x - origin.x) * index / Const.MAX_POINT_SINGLE;
         switch (type) {
             // temperature
             case 't':
@@ -380,7 +386,7 @@ class MyCanvas extends JPanel {
 
         g.setColor(Const.TEXT_COLOR);
         g.setFont(Const.TEXT_FONT);
-        g.drawChars("time".toCharArray(), 0, 4, axisX.x, axisX.y + Const.FONT_SIZE / 2);
+        g.drawChars("time(ms)".toCharArray(), 0, 8, axisX.x, axisX.y);
         g.drawChars("value".toCharArray(), 0, 5, axisY.x - Const.FONT_SIZE, axisY.y - Const.FONT_SIZE / 2);
     }
 
@@ -405,7 +411,7 @@ class MyCanvas extends JPanel {
                 break;
         }
 
-        int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_NUM);
+        int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_SINGLE);
         Point lastPoint = null;
         int idCount = 0;
         MsgPacket packet;
@@ -427,7 +433,7 @@ class MyCanvas extends JPanel {
 
     private void paintCoordinate(Graphics2D g) {
         g.setFont(Const.COORDINATE_FONT);
-        int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_NUM);
+        int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_SINGLE);
         int idCount = 0;
         MsgPacket packet;
         for (int i = 0; i < length; i++) {
@@ -452,6 +458,10 @@ class SwingChart {
     private static SwingChart test = null;
     private JButton[] nodeBtns;
     private NodeBtnClickListener[] listeners;
+    private JButton frequencyBtn;
+    private FrequencyBtnClickListener setListener;
+    private JTextField frequencyInput;
+    private MyMsgReader user;
 
     static synchronized SwingChart getInstance() {
         if (test == null) {
@@ -464,6 +474,9 @@ class SwingChart {
     //     getInstance();
     // }
 
+    int getFrequency() {
+        return Integer.parseInt(frequencyInput.getText());
+    }
 
     private SwingChart() {
         try {
@@ -472,11 +485,16 @@ class SwingChart {
 
         }
 
+
         prepareGUI();
     }
 
     void update() {
         frame.repaint();
+    }
+
+    void setUser(MyMsgReader user) {
+        this.user = user;
     }
 
     private void prepareGUI() {
@@ -488,17 +506,18 @@ class SwingChart {
         frame.setBounds(0, 0, Const.WND_WIDTH, Const.WND_HEIGHT);
         frame.setResizable(true);
 
+        // canvas
         myc = new MyCanvas();
 
         frame.add(myc);
 
+        // show nodes
         nodeBtns = new JButton[Const.NODE_ID_RANGE];
         listeners = new NodeBtnClickListener[Const.NODE_ID_RANGE];
         for (int i = 0; i < Const.NODE_ID_RANGE; i++) {
             listeners[i] = new NodeBtnClickListener(i + 1);
             nodeBtns[i] = new JButton();
             nodeBtns[i].setBounds(Const.BUTTON_X, Const.BUTTON_Y, Const.BUTTON_WIDTH, Const.BUTTON_HEIGHT);
-            //nodeBtns[i].setMaximumSize(new Dimension(Const.BUTTON_WIDTH, Const.BUTTON_HEIGHT));
             nodeBtns[i].setSize(Const.BUTTON_WIDTH, Const.BUTTON_HEIGHT);
             nodeBtns[i].setHideActionText(true);
             nodeBtns[i].setText("node " + (i + 1));
@@ -508,9 +527,29 @@ class SwingChart {
             myc.add(nodeBtns[i]);
         }
 
+        // set frequency
+        frequencyBtn = new JButton();
+        frequencyBtn.setHideActionText(true);
+        frequencyBtn.setText("set");
+        frequencyBtn.setBounds(Const.FREQUENCY_BUTTON_X, Const.FREQUENCY_BOTTON_Y, Const.BUTTON_WIDTH, Const.BUTTON_HEIGHT);
+        frequencyBtn.setBorderPainted(false);
+        setListener = new FrequencyBtnClickListener();
+        frequencyBtn.addActionListener(setListener);
+
+        myc.add(frequencyBtn);
+
+        frequencyInput = new JTextField("" + Const.SAMPLING_FREQUENCY, 6);
+        frequencyInput.setBounds(Const.FREQUENCY_INPUT_X, Const.FREQUENCY_INPUT_Y, Const.FREQUENCY_WIDTH, Const.FREQUENCY_HEIGHT);
+        myc.add(frequencyInput);
+
+
 
 
         frame.setVisible(true);
+    }
+
+    private void callSendStartMsg() {
+        this.user.sendStartCommand(getFrequency());
     }
 
     class NodeBtnClickListener implements ActionListener {
@@ -521,15 +560,29 @@ class SwingChart {
         @Override
         public void actionPerformed(ActionEvent e) {
             myc.nodeIDSwitch = nodeId;
-            System.out.println(myc.nodeIDSwitch);
+            //System.out.println(myc.nodeIDSwitch);
             update();
         }
     }
+
+    class FrequencyBtnClickListener implements ActionListener {
+        FrequencyBtnClickListener() {
+
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            callSendStartMsg();
+        }
+    }
+
+
 }
 
 public class MyMsgReader implements net.tinyos.message.MessageListener {
 
   private MoteIF moteIF;
+  private static String commandClassType;
   
 
   public MyMsgReader(String source) throws Exception {
@@ -540,12 +593,53 @@ public class MyMsgReader implements net.tinyos.message.MessageListener {
       moteIF = new MoteIF(BuildSource.makePhoenix(PrintStreamMessenger.err));
     }
 
-    SwingChart.getInstance();
+    SwingChart.getInstance().setUser(this);
   }
 
   public void start() {
   }
 
+  public void sendStartCommand(int sensePeriod) {
+    
+    //cmdType.
+    try {
+        Class cmdType = Class.forName(commandClassType);
+        Object payload = cmdType.newInstance();
+    
+        Method[] methods = cmdType.getMethods();
+        for (Method method : methods) {
+            String name = method.getName();
+            if (name.equals("set_status")) {
+                method.invoke(payload, 1);
+            }
+            if (name.equals("set_sensePeriod")) {
+                method.invoke(payload, sensePeriod);
+            }
+            if (name.equals("set_sendPeriod")) {
+                method.invoke(payload, sensePeriod * 2);
+            }
+            if (name.equals("set_windowSize")) {
+                method.invoke(payload, 10);
+            }
+            this.moteIF.send(0, Message.class.cast(cmdType.cast(payload)));
+        }
+    } catch(Exception e) {
+        e.printStackTrace();
+    }
+    
+    // Object payload = cmdType.newInstance();
+    // if (pay)
+    // try {
+    //     payload.set_status(1);
+    //     payload.set_sensePeriod(sensePeriod);
+    //     payload.set_sendPeriod(sensePeriod * 5);
+    //     payload.set_windowSize(10);
+    //     this.moteIF.send(0, payload);
+    // } catch (Exception e) {
+    //     e.printStackTrace();
+    // }
+    
+  }
   
   
   public void messageReceived(int to, Message message) {
@@ -579,7 +673,10 @@ public class MyMsgReader implements net.tinyos.message.MessageListener {
       for (int i = 0; i < args.length; i++) {
 	    if (args[i].equals("-comm")) {
 	        source = args[++i];
-	    }
+        }
+        else if (args[i].equals("-cmd")){
+            commandClassType = args[++i];
+        }
         else {
             String className = args[i];
             try {
