@@ -69,6 +69,99 @@ import java.util.List;
 
 import java.awt.*;
 
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+
+class Const {
+    // window' size
+    static final int WND_WIDTH = 1000;
+    static final int WND_HEIGHT = 600;
+
+    // padding
+    static final int PADDING_TOP = 30;
+    static final int PADDING_BOTTOM = 80;
+    static final int PADDING_LEFT = 80;
+    static final int PADDING_RIGHT = 100;
+
+    // origin
+    static final int ORIGIN_X = PADDING_LEFT;
+    static final int ORIGIN_Y = WND_HEIGHT - PADDING_BOTTOM;
+
+    // end of x axis
+    static final int AXIS_X_X = WND_WIDTH - PADDING_RIGHT;
+    static final int AXIS_X_Y = ORIGIN_Y;
+
+    // end of y axis
+    static final int AXIS_Y_X = ORIGIN_X;
+    static final int AXIS_Y_Y = PADDING_TOP;
+
+    // axis color
+    static final Color AXIS_COLOR = new Color(0, 0, 0);
+
+    // point color
+    static final Color POINT_TEMPERATURE_COLOR = new Color(192, 64, 64);
+    static final Color POINT_HUMIDITY_COLOR = new Color(64, 192, 64);
+    static final Color POINT_RADIATION_COLOR = new Color(64, 64, 192);
+
+    // limit of temperature
+    static final int TEMPERATURE_MAX = 1000;
+    static final int TEMPERATURE_MIN = 600;
+
+    // limit of humidity
+    static final int HUMIDITY_MAX = 1000;
+    static final int HUMIDITY_MIN = 600;
+
+    // limit of RADIATION
+    static final int RADIATION_MAX = 1000;
+    static final int RADIATION_MIN = 600;
+
+    // max point number
+    static final int MAX_POINT_NUM = MsgPacket.MAX_ITEMS;
+
+    // point radius
+    static final int POINT_RADIUS = 3;
+
+    // stroke width
+    static final float STROKE_WIDTH = 2.0f;
+
+    // text color
+    static final Color TEXT_COLOR = new Color(32, 32, 32);
+
+    // font size
+    static final int FONT_SIZE = 20;
+
+    // text font
+    static final Font TEXT_FONT = new Font("Constantia", Font.PLAIN, FONT_SIZE);
+
+    // legend position
+    static final int LEGEND_X = 800;
+    static final int LEGEND_TEMPERATURE_Y = 100;
+    static final int LEGEND_HUMIDITY_Y = 150;
+    static final int LEGEND_RADIATION_Y = 200;
+    static final int LEGEND_RECT_WIDTH = 40;
+    static final int LEGEND_RECT_HEIGHT = 20;
+
+    // coordinate text font
+    static final int COORDINATE_FONT_SIZE = 12;
+    static final Font COORDINATE_FONT = new Font("Consolas", Font.PLAIN, COORDINATE_FONT_SIZE);
+
+    // coordinate interval
+    static final int COORDINATE_INTEGRAL = 8;
+
+    // node id range
+    static final int NODE_ID_RANGE = 2;
+
+    // button size
+    static final int BUTTON_WIDTH = 80;
+    static final int BUTTON_HEIGHT = 50;
+
+    // button position
+    static final int BUTTON_X = 300;
+    static final int BUTTON_Y = 0;
+}
+
 class MsgPacket {
     static int MAX_ITEMS = 40;
     private static String[] patterns = {
@@ -155,80 +248,17 @@ class MsgPacket {
                 return "" + val;
         }
     }
-}
 
-class Const {
-    // window' size
-    static int WND_WIDTH = 1000;
-    static int WND_HEIGHT = 600;
-
-    // padding
-    static int PADDING_TOP = 30;
-    static int PADDING_BOTTOM = 80;
-    static int PADDING_LEFT = 80;
-    static int PADDING_RIGHT = 100;
-
-    // origin
-    static int ORIGIN_X = PADDING_LEFT;
-    static int ORIGIN_Y = WND_HEIGHT - PADDING_BOTTOM;
-
-    // end of x axis
-    static int AXIS_X_X = WND_WIDTH - PADDING_RIGHT;
-    static int AXIS_X_Y = ORIGIN_Y;
-
-    // end of y axis
-    static int AXIS_Y_X = ORIGIN_X;
-    static int AXIS_Y_Y = PADDING_TOP;
-
-    // axis color
-    static Color AXIS_COLOR = new Color(0, 0, 0);
-
-    // point color
-    static Color POINT_TEMPERATURE_COLOR = new Color(192, 64, 64);
-    static Color POINT_HUMIDITY_COLOR = new Color(64, 192, 64);
-    static Color POINT_RADIATION_COLOR = new Color(64, 64, 192);
-
-    // limit of temperature
-    static int TEMPERATURE_MAX = 1000;
-    static int TEMPERATURE_MIN = 600;
-
-    // limit of humidity
-    static int HUMIDITY_MAX = 1000;
-    static int HUMIDITY_MIN = 600;
-
-    // limit of RADIATION
-    static int RADIATION_MAX = 1000;
-    static int RADIATION_MIN = 600;
-
-    // max point number
-    static int MAX_POINT_NUM = MsgPacket.MAX_ITEMS;
-
-    // point radius
-    static int POINT_RADIUS = 3;
-
-    // stroke width
-    static float STROKE_WIDTH = 2.0f;
-
-    // text color
-    static Color TEXT_COLOR = new Color(32, 32, 32);
-
-    // font size
-    static int FONT_SIZE = 20;
-
-    // text font
-    static Font TEXT_FONT = new Font("Constantia", Font.PLAIN, FONT_SIZE);
-
-    // legend position
-    static int LEGEND_X = 800;
-    static int LEGEND_TEMPERATURE_Y = 100;
-    static int LEGEND_HUMIDITY_Y = 150;
-    static int LEGEND_RADIATION_Y = 200;
-    static int LEGEND_RECT_WIDTH = 40;
-    static int LEGEND_RECT_HEIGHT = 20;
-
-    // coordinate text font
-    static int COORDINATE_FONT_SIZE = 12;
-    static Font COORDINATE_FONT = new Font("Consolas", Font.PLAIN, COORDINATE_FONT_SIZE);
+    int getValue(String key) {
+        for (int i = 0; i < patterns.length; i++) {
+            if (patterns[i].equals(key)) {
+                //System.out.println("found key [" + key + "]: " + this.datas[i]);
+                return this.datas[i];
+            }
+        }
+        System.out.println("error in parsing key [" + key + "]");
+        return 0;
+    }
 }
 
 class Point {
@@ -250,6 +280,12 @@ class MyCanvas extends JPanel {
     private static Point origin = new Point(Const.ORIGIN_X, Const.ORIGIN_Y);
     private static Point axisX = new Point(Const.AXIS_X_X, Const.AXIS_X_Y);
     private static Point axisY = new Point(Const.AXIS_Y_X, Const.AXIS_Y_Y);
+
+    int nodeIDSwitch;
+
+    MyCanvas() {
+        this.nodeIDSwitch = 2;
+    }
 
     static Point calc(Character type, int val, int index) {
         // auto cast to integer
@@ -334,19 +370,19 @@ class MyCanvas extends JPanel {
     }
 
     private void paintSingle(Graphics2D g, Character t) {
-        int pos = 0;
+        String key = "nodeId";
         switch(t) {
             case 't':
                 g.setColor(Const.POINT_TEMPERATURE_COLOR);
-                pos = 2;
+                key = "temperature";
                 break;
             case 'h':
                 g.setColor(Const.POINT_HUMIDITY_COLOR);
-                pos = 3;
+                key = "humidity";
                 break;
             case 'r':
                 g.setColor(Const.POINT_RADIATION_COLOR);
-                pos = 4;
+                key = "radiation";
                 break;
             default:
                 System.out.println("error in parsing [" + t + "]");
@@ -356,14 +392,20 @@ class MyCanvas extends JPanel {
 
         int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_NUM);
         Point lastPoint = null;
-
+        int idCount = 0;
+        MsgPacket packet;
         for (int i = 0; i < length; i++) {
-            Point point = calc(t, MsgPacket.lis.get(i).datas[pos], i);
-            g.fillOval(point.x - Const.POINT_RADIUS, point.y - Const.POINT_RADIUS, 2 * Const.POINT_RADIUS, 2 * Const.POINT_RADIUS);
-            if (lastPoint != null) {
-                g.drawLine(lastPoint.x, lastPoint.y, point.x, point.y);
+            packet = MsgPacket.lis.get(i);
+            if (packet.getValue("nodeId") == nodeIDSwitch) {
+                Point point = calc(t, packet.getValue(key), idCount);
+                g.fillOval(point.x - Const.POINT_RADIUS, point.y - Const.POINT_RADIUS, 2 * Const.POINT_RADIUS, 2 * Const.POINT_RADIUS);
+                if (lastPoint != null) {
+                    g.drawLine(lastPoint.x, lastPoint.y, point.x, point.y);
+                }
+                lastPoint = point;
+                idCount++;
             }
-            lastPoint = point;
+
         }
 
     }
@@ -371,18 +413,30 @@ class MyCanvas extends JPanel {
     private void paintCoordinate(Graphics2D g) {
         g.setFont(Const.COORDINATE_FONT);
         int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_NUM);
-        for (int i = 0; i < Const.MAX_POINT_NUM; i++) {
-            // when in coordinate mode, 'val' param is useless
-            Point point = calc('x', 0, i);
-            g.drawChars(("" + i).toCharArray(), 0, ("" + i).length(), point.x, point.y + Const.COORDINATE_FONT_SIZE);
+        int idCount = 0;
+        MsgPacket packet;
+        for (int i = 0; i < length; i++) {
+            packet = MsgPacket.lis.get(i);
+            if (packet.getValue("nodeId") == nodeIDSwitch) {
+                if (idCount % Const.COORDINATE_INTEGRAL == 0) {
+                    Point point = calc('x', 0, idCount);
+                    int data = packet.getValue("currentTime");
+                    g.drawChars(("" + data).toCharArray(), 0, ("" + data).length(),
+                            point.x, point.y + Const.COORDINATE_FONT_SIZE);
+                }
+                idCount++;
+            }
         }
     }
 }
 
 // singleton
 class SwingChart {
+    private MyCanvas myc;
     private JFrame frame;
     private static SwingChart test = null;
+    private JButton[] nodeBtns;
+    private NodeBtnClickListener[] listeners;
 
     static synchronized SwingChart getInstance() {
         if (test == null) {
@@ -391,9 +445,9 @@ class SwingChart {
         return test;
     }
 
-    public static void main(String[] args) {
-        getInstance();
-    }
+    // public static void main(String[] args) {
+    //     getInstance();
+    // }
 
 
     private SwingChart() {
@@ -403,14 +457,14 @@ class SwingChart {
 
         }
 
-        createAndShowGUI();
+        prepareGUI();
     }
 
     void update() {
         frame.repaint();
     }
 
-    private void createAndShowGUI() {
+    private void prepareGUI() {
 
         // create window
         frame = new JFrame("WSN data chart");
@@ -419,11 +473,42 @@ class SwingChart {
         frame.setBounds(0, 0, Const.WND_WIDTH, Const.WND_HEIGHT);
         frame.setResizable(true);
 
-        MyCanvas myc = new MyCanvas();
+        myc = new MyCanvas();
 
         frame.add(myc);
 
+        nodeBtns = new JButton[Const.NODE_ID_RANGE];
+        listeners = new NodeBtnClickListener[Const.NODE_ID_RANGE];
+        for (int i = 0; i < Const.NODE_ID_RANGE; i++) {
+            listeners[i] = new NodeBtnClickListener(i + 1);
+            nodeBtns[i] = new JButton();
+            nodeBtns[i].setBounds(Const.BUTTON_X, Const.BUTTON_Y, Const.BUTTON_WIDTH, Const.BUTTON_HEIGHT);
+            //nodeBtns[i].setMaximumSize(new Dimension(Const.BUTTON_WIDTH, Const.BUTTON_HEIGHT));
+            nodeBtns[i].setSize(Const.BUTTON_WIDTH, Const.BUTTON_HEIGHT);
+            nodeBtns[i].setHideActionText(true);
+            nodeBtns[i].setText("node " + (i + 1));
+            nodeBtns[i].setBorderPainted(false);
+            nodeBtns[i].addActionListener(listeners[i]);
+
+            myc.add(nodeBtns[i]);
+        }
+
+
+
         frame.setVisible(true);
+    }
+
+    class NodeBtnClickListener implements ActionListener {
+        int nodeId;
+        NodeBtnClickListener(int i) {
+            this.nodeId = i;
+        }
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            myc.nodeIDSwitch = nodeId;
+            System.out.println(myc.nodeIDSwitch);
+            update();
+        }
     }
 }
 
