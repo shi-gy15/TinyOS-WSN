@@ -116,7 +116,7 @@ class Const {
 
     // limit of humidity
     static final int HUMIDITY_MAX = 1100;
-    static final int HUMIDITY_MIN = 900;
+    static final int HUMIDITY_MIN = 800;
 
     // limit of radiation
     static final int RADIATION_MAX = 500;
@@ -199,9 +199,15 @@ class MsgPacket {
     private static BufferedWriter fout;
     static List<MsgPacket> lis;
     private static boolean hasInited = false;
+    static long startTime = 0;
+    static SimpleDateFormat timeForm = new SimpleDateFormat("HH:mm:ss.SSS");
 
     int[] datas;
     String raw;
+
+    static String calcTime(int stamp) {
+        return timeForm.format(stamp);
+    }
 
     private MsgPacket() {
 
@@ -218,6 +224,7 @@ class MsgPacket {
                 packet.datas[i] = hex2int(m.group(1));
             }
         }
+        packet.datas[5] += startTime;
         lis.add(packet);
         if (lis.size() > MAX_ITEMS) {
             lis.remove(0);
@@ -267,6 +274,7 @@ class MsgPacket {
             case 4: // radiation
                 return val + " ";
             case 5: // currentTime
+                return calcTime(val);
             default:
                 return "" + val;
         }
@@ -303,19 +311,19 @@ class MyCanvas extends JPanel {
     private static Point origin = new Point(Const.ORIGIN_X, Const.ORIGIN_Y);
     private static Point axisX = new Point(Const.AXIS_X_X, Const.AXIS_X_Y);
     private static Point axisY = new Point(Const.AXIS_Y_X, Const.AXIS_Y_Y);
-    private SimpleDateFormat timeForm = new SimpleDateFormat("HH:mm:ss.ff");
+    
 
     int nodeIDSwitch;
 
-    private Date startTime;
+    //private Date startTime;
 
     MyCanvas() {
         this.nodeIDSwitch = 1;
     }
 
-    void setStartTime(Date t) {
-        this.startTime = t;
-    }
+    // void setStartTime(Date t) {
+    //     this.startTime = t;
+    // }
 
     static Point calc(Character type, int val, int index) {
         // auto cast to integer
@@ -444,9 +452,7 @@ class MyCanvas extends JPanel {
 
     }
 
-    String calcTime(int stamp) {
-        return timeForm.format(this.startTime.getTime() + stamp);
-    }
+    
 
     private void paintCoordinate(Graphics2D g) {
         g.setFont(Const.COORDINATE_FONT);
@@ -462,7 +468,7 @@ class MyCanvas extends JPanel {
             if (packet.getValue("nodeId") == nodeIDSwitch) {
                 if (idCount % Const.COORDINATE_INTEGRAL == 0) {
                     Point point = calc('x', 0, idCount);
-                    String timeinfo = calcTime(packet.getValue("currentTime"));
+                    String timeinfo = MsgPacket.calcTime(packet.getValue("currentTime"));
                     g.drawChars(timeinfo.toCharArray(), 0, timeinfo.length(),
                             point.x, point.y + Const.COORDINATE_FONT_SIZE);
                 }
@@ -483,7 +489,7 @@ class SwingChart {
     private FrequencyBtnClickListener setListener;
     private JTextField frequencyInput;
     private MyMsgReader user;
-    Date startTime;
+    //Date startTime;
 
     static synchronized SwingChart getInstance() {
         if (test == null) {
@@ -570,11 +576,11 @@ class SwingChart {
         frame.setVisible(true);
     }
 
-    private void callSendStartMsg() {
-        startTime = new Date();
-        this.myc.setStartTime(startTime);
-        this.user.sendStartCommand(getFrequency());
-    }
+    // private void callSendStartMsg() {
+    //     startTime = new Date();
+    //     this.myc.setStartTime(startTime);
+    //     this.user.sendStartCommand(getFrequency());
+    // }
 
     class NodeBtnClickListener implements ActionListener {
         int nodeId;
@@ -596,7 +602,9 @@ class SwingChart {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            callSendStartMsg();
+            //callSendStartMsg();
+            MsgPacket.startTime = (new Date()).getTime();
+            user.sendStartCommand(getFrequency());
         }
     }
 
