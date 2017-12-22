@@ -33,7 +33,6 @@ implementation {
 	message_t pkt1;
 	message_t pkt2;
 	message_t work_pkt;
-    SenseMsg sample;
 	SenseMsg temp;
 
 	//配置参数
@@ -260,6 +259,9 @@ implementation {
 		SEND_TIMER_PERIOD = rcvPayload->sendPeriod;
 		SENSE_TIMER_PERIOD = rcvPayload->sensePeriod;
 		WND_SIZE = rcvPayload->windowSize;
+
+		ack[1] = 0;
+		ack[2] = 0;
 
 		sendWorkMsg();
 	    return msg;

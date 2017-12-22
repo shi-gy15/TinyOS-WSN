@@ -224,7 +224,7 @@ implementation {
 			WND_SIZE = rcvPayload->windowSize;
 
 			call SenseTimer.stop();
-			call ResetTimer.startOneShot(SEND_TIMER_PERIOD + 100);
+			call ResetTimer.startOneShot(1000);
 		}
 		else {
 			//结束采集和发送
@@ -298,6 +298,7 @@ implementation {
 		stopTimer();
 		busy = FALSE;
 		readFlag = 0;
+		currentIndex = 1;
 		//初始化队列
 		initQueue();
 		//开始采集和发送

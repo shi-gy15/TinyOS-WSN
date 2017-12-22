@@ -374,8 +374,8 @@ implementation {
 			SENSE_TIMER_PERIOD = rcvPayload->sensePeriod;
 			WND_SIZE = rcvPayload->windowSize;
 
-			call SenseTimer.stop();
-			call ResetTimer.startOneShot(SEND_TIMER_PERIOD + 100);
+			stopTimer();
+			call ResetTimer.startOneShot(1000);
 		}
 		else {
 			//结束采集和发送
@@ -443,10 +443,10 @@ implementation {
 	}
 
 	event void ResetTimer.fired() {
-		//结束采集和发送
-		stopTimer();
 		busy = FALSE;
 		readFlag = 0;
+		ack = 0;
+		m_currentIndex = 1;
 		//初始化队列
 		initQueue();
 		//开始采集和发送
