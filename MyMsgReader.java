@@ -111,16 +111,16 @@ class Const {
     static final Color POINT_RADIATION_COLOR = new Color(64, 64, 192);
 
     // limit of temperature
-    static final int TEMPERATURE_MAX = 6700;
-    static final int TEMPERATURE_MIN = 6300;
+    static int TEMPERATURE_MAX = 6510;
+    static int TEMPERATURE_MIN = 6470;
 
     // limit of humidity
-    static final int HUMIDITY_MAX = 1100;
-    static final int HUMIDITY_MIN = 800;
+    static int HUMIDITY_MAX = 800;
+    static int HUMIDITY_MIN = 760;
 
     // limit of radiation
-    static final int RADIATION_MAX = 500;
-    static final int RADIATION_MIN = 0;
+    static int RADIATION_MAX = 200;
+    static int RADIATION_MIN = 0;
 
     // max point number
     static final int MAX_POINT_NUM = MsgPacket.MAX_ITEMS;
@@ -182,6 +182,8 @@ class Const {
     // single chart
     static final int MAX_POINT_SINGLE = 40;
 
+    // y axis element
+    static final int ELEM_NUM_Y = 5;
 
 }
 
@@ -201,6 +203,18 @@ class MsgPacket {
     private static boolean hasInited = false;
     static long startTime = 0;
     static SimpleDateFormat timeForm = new SimpleDateFormat("HH:mm:ss.SSS");
+
+    // // limit of temperature
+    // static int TEMPERATURE_MAX = Const.TEMPERATURE_MAX;
+    // static int TEMPERATURE_MIN = Const.TEMPERATURE_MIN;
+
+    // // limit of humidity
+    // static int HUMIDITY_MAX = Const.HUMIDITY_MAX;
+    // static int HUMIDITY_MIN = Const.HUMIDITY_MIN;
+
+    // // limit of radiation
+    // static int RADIATION_MAX = Const.RADIATION_MAX;
+    // static int RADIATION_MIN = Const.RADIATION_MIN;
 
     int[] datas;
     String raw;
@@ -224,13 +238,16 @@ class MsgPacket {
                 packet.datas[i] = hex2int(m.group(1));
             }
         }
-        packet.datas[5] += startTime;
+        packet.datas[5] += startTime ;
+        //packet.modifyValue();
         lis.add(packet);
         if (lis.size() > MAX_ITEMS) {
             lis.remove(0);
         }
         return packet;
     }
+
+   
 
     void display() throws Exception{
         for (int i = 0; i < this.datas.length; i++) {
@@ -290,6 +307,18 @@ class MsgPacket {
         System.out.println("error in parsing key [" + key + "]");
         return 0;
     }
+
+    void setValue(String key, int val) {
+        for (int i = 0; i < patterns.length; i++) {
+            if (patterns[i].equals(key)) {
+                //System.out.println("found key [" + key + "]: " + this.datas[i]);
+                //return this.datas[i];
+                this.datas[i] = val;
+                return;
+            }
+        }
+        System.out.println("error in parsing key [" + key + "]");
+    }
 }
 
 class Point {
@@ -311,19 +340,25 @@ class MyCanvas extends JPanel {
     private static Point origin = new Point(Const.ORIGIN_X, Const.ORIGIN_Y);
     private static Point axisX = new Point(Const.AXIS_X_X, Const.AXIS_X_Y);
     private static Point axisY = new Point(Const.AXIS_Y_X, Const.AXIS_Y_Y);
+
+    // limit of temperature
+    static int TEMPERATURE_MAX = Const.TEMPERATURE_MAX;
+    static int TEMPERATURE_MIN = Const.TEMPERATURE_MIN;
+
+    // limit of humidity
+    static int HUMIDITY_MAX = Const.HUMIDITY_MAX;
+    static int HUMIDITY_MIN = Const.HUMIDITY_MIN;
+
+    // limit of radiation
+    static int RADIATION_MAX = Const.RADIATION_MAX;
+    static int RADIATION_MIN = Const.RADIATION_MIN;
     
 
     int nodeIDSwitch;
 
-    //private Date startTime;
-
     MyCanvas() {
         this.nodeIDSwitch = 1;
     }
-
-    // void setStartTime(Date t) {
-    //     this.startTime = t;
-    // }
 
     static Point calc(Character type, int val, int index) {
         // auto cast to integer
@@ -332,18 +367,18 @@ class MyCanvas extends JPanel {
         switch (type) {
             // temperature
             case 't':
-                res.y = origin.y + (val - Const.TEMPERATURE_MIN) * (axisY.y - origin.y)
-                        / (Const.TEMPERATURE_MAX - Const.TEMPERATURE_MIN);
+                res.y = origin.y + (val - TEMPERATURE_MIN) * (axisY.y - origin.y)
+                        / (TEMPERATURE_MAX - TEMPERATURE_MIN);
                 break;
             // humidity
             case 'h':
-                res.y = origin.y + (val - Const.HUMIDITY_MIN) * (axisY.y - origin.y)
-                        / (Const.HUMIDITY_MAX - Const.HUMIDITY_MIN);
+                res.y = origin.y + (val - HUMIDITY_MIN) * (axisY.y - origin.y)
+                        / (HUMIDITY_MAX - HUMIDITY_MIN);
                 break;
             // radiation
             case 'r':
-                res.y = origin.y + (val - Const.RADIATION_MIN) * (axisY.y - origin.y)
-                        / (Const.RADIATION_MAX - Const.RADIATION_MIN);
+                res.y = origin.y + (val - RADIATION_MIN) * (axisY.y - origin.y)
+                        / (RADIATION_MAX - RADIATION_MIN);
                 break;
             // coordinate x
             case 'x':
@@ -367,6 +402,10 @@ class MyCanvas extends JPanel {
         g2D.setStroke(new BasicStroke(Const.STROKE_WIDTH));
 
         super.paintComponent(g);
+
+        calcLimit();
+
+        paintYValue(g2D);
 
         paintAxis(g2D);
         paintLegend(g2D);
@@ -393,6 +432,29 @@ class MyCanvas extends JPanel {
         g.fillRect(Const.LEGEND_X, Const.LEGEND_RADIATION_Y, Const.LEGEND_RECT_WIDTH, Const.LEGEND_RECT_HEIGHT);
         g.setColor(Const.TEXT_COLOR);
         g.drawChars("radiation".toCharArray(), 0, 9, Const.LEGEND_X + Const.LEGEND_RECT_WIDTH, Const.LEGEND_RADIATION_Y + Const.LEGEND_RECT_HEIGHT);
+    }
+
+    private void paintYValue(Graphics2D g) {
+        g.setFont(Const.COORDINATE_FONT);
+        int x = 10;
+        int y = 0;
+        int temperature;
+        int humidity;
+        int radiation;
+        for (int i = 0; i <= Const.ELEM_NUM_Y; i++) {
+            y = Const.ORIGIN_Y + (Const.AXIS_Y_Y - Const.ORIGIN_Y) * i / Const.ELEM_NUM_Y;
+            temperature = (TEMPERATURE_MIN + (TEMPERATURE_MAX - TEMPERATURE_MIN) * i / Const.ELEM_NUM_Y);
+            humidity = (HUMIDITY_MIN + (HUMIDITY_MAX - HUMIDITY_MIN) * i / Const.ELEM_NUM_Y);
+            radiation = (RADIATION_MIN + (RADIATION_MAX - RADIATION_MIN) * i / Const.ELEM_NUM_Y);
+            
+            g.setColor(Const.POINT_TEMPERATURE_COLOR);
+            g.drawChars(("" + temperature).toCharArray(), 0, ("" + temperature).length(), x, y);
+            g.setColor(Const.POINT_HUMIDITY_COLOR);
+            g.drawChars(("" + humidity).toCharArray(), 0, ("" + humidity).length(), x, y + Const.COORDINATE_FONT_SIZE);
+            g.setColor(Const.POINT_RADIATION_COLOR);
+            g.drawChars(("" + radiation).toCharArray(), 0, ("" + radiation).length(), x, y + 2 * Const.COORDINATE_FONT_SIZE);
+            
+        }
     }
 
 
@@ -452,6 +514,44 @@ class MyCanvas extends JPanel {
 
     }
 
+    private void calcLimit() {
+        int length = MsgPacket.lis.size();
+        int idCount = 0;
+        int tempVal;
+        MsgPacket packet;
+        TEMPERATURE_MAX = Const.TEMPERATURE_MAX;
+        TEMPERATURE_MIN = Const.TEMPERATURE_MIN;
+        HUMIDITY_MAX = Const.HUMIDITY_MAX;
+        HUMIDITY_MIN = Const.HUMIDITY_MIN;
+        RADIATION_MAX = Const.RADIATION_MAX;
+        RADIATION_MIN = Const.RADIATION_MIN;
+        for (int i = 0; i < length; i++) {
+            if (idCount >= Const.MAX_POINT_SINGLE) {
+                break;
+            }
+            packet = MsgPacket.lis.get(i);
+            if (packet.getValue("nodeId") == nodeIDSwitch) {
+                tempVal = packet.getValue("temperature");
+                if (tempVal > TEMPERATURE_MAX) {
+                    TEMPERATURE_MAX = tempVal;
+                } else if (tempVal < TEMPERATURE_MIN) {
+                    TEMPERATURE_MIN = tempVal;
+                }
+                tempVal = packet.getValue("humidity");
+                if (tempVal > HUMIDITY_MAX) {
+                    HUMIDITY_MAX = tempVal;
+                } else if (tempVal < HUMIDITY_MIN) {
+                    HUMIDITY_MIN = tempVal;
+                }
+                tempVal = packet.getValue("radiation");
+                if (tempVal > RADIATION_MAX) {
+                    RADIATION_MAX = tempVal;
+                } else if (tempVal < RADIATION_MIN) {
+                    RADIATION_MIN = tempVal;
+                }
+            }
+        }
+    }
     
 
     private void paintCoordinate(Graphics2D g) {
@@ -476,6 +576,8 @@ class MyCanvas extends JPanel {
             }
         }
     }
+
+    
 }
 
 // singleton
@@ -576,11 +678,6 @@ class SwingChart {
         frame.setVisible(true);
     }
 
-    // private void callSendStartMsg() {
-    //     startTime = new Date();
-    //     this.myc.setStartTime(startTime);
-    //     this.user.sendStartCommand(getFrequency());
-    // }
 
     class NodeBtnClickListener implements ActionListener {
         int nodeId;
@@ -603,7 +700,8 @@ class SwingChart {
         @Override
         public void actionPerformed(ActionEvent e) {
             //callSendStartMsg();
-            MsgPacket.startTime = (new Date()).getTime();
+            MsgPacket.startTime = System.currentTimeMillis() % 86400000;
+	    System.out.println(MsgPacket.startTime);
             user.sendStartCommand(getFrequency());
         }
     }
