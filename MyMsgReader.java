@@ -1,83 +1,23 @@
-/*									tab:4
- * Copyright (c) 2000-2005 The Regents of the University  of California.  
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * - Redistributions of source code must retain the above copyright
- *   notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright
- *   notice, this list of conditions and the following disclaimer in the
- *   documentation and/or other materials provided with the
- *   distribution.
- * - Neither the name of the copyright holders nor the names of
- *   its contributors may be used to endorse or promote products derived
- *   from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL
- * THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Copyright (c) 2002-2005 Intel Corporation
- * All rights reserved.
- *
- * This file is distributed under the terms in the attached INTEL-LICENSE     
- * file. If you do not find these files, copies can be found by writing to
- * Intel Research Berkeley, 2150 Shattuck Avenue, Suite 1300, Berkeley, CA, 
- * 94704.  Attention:  Intel License Inquiry.
- */
-/* Authors:	Phil Levis <pal@cs.berkeley.edu>
- * Date:        December 1 2005
- * Desc:        Generic Message reader
- *               
- */
-
-/**
- * @author Phil Levis <pal@cs.berkeley.edu>
- */
-
 
 package net.tinyos.tools;
 
 import java.util.*;
-
 import net.tinyos.message.*;
 import net.tinyos.packet.*;
 import net.tinyos.util.*;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.regex.*;
-
-
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
-
 import javax.swing.*;
-
 import java.lang.Math;
-
 import java.util.List;
-
 import java.awt.*;
-
-
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
 
 class Const {
     // window' size
@@ -87,7 +27,7 @@ class Const {
     // padding
     static final int PADDING_TOP = 30;
     static final int PADDING_BOTTOM = 80;
-    static final int PADDING_LEFT = 50;
+    static final int PADDING_LEFT = 60;
     static final int PADDING_RIGHT = 100;
 
     // origin
@@ -184,7 +124,6 @@ class Const {
 
     // y axis element
     static final int ELEM_NUM_Y = 5;
-
 }
 
 class MsgPacket {
@@ -204,20 +143,7 @@ class MsgPacket {
     static long startTime = 0;
     static SimpleDateFormat timeForm = new SimpleDateFormat("HH:mm:ss.SSS");
 
-    // // limit of temperature
-    // static int TEMPERATURE_MAX = Const.TEMPERATURE_MAX;
-    // static int TEMPERATURE_MIN = Const.TEMPERATURE_MIN;
-
-    // // limit of humidity
-    // static int HUMIDITY_MAX = Const.HUMIDITY_MAX;
-    // static int HUMIDITY_MIN = Const.HUMIDITY_MIN;
-
-    // // limit of radiation
-    // static int RADIATION_MAX = Const.RADIATION_MAX;
-    // static int RADIATION_MIN = Const.RADIATION_MIN;
-
     int[] datas;
-    String raw;
 
     static String calcTime(int stamp) {
         return timeForm.format(stamp);
@@ -229,7 +155,7 @@ class MsgPacket {
 
     static MsgPacket form(String src) {
         MsgPacket packet = new MsgPacket();
-        packet.raw = src;
+        
         Matcher m;
         packet.datas = new int[regs.length];
         for (int i = 0; i < regs.length; i++) {
@@ -238,16 +164,13 @@ class MsgPacket {
                 packet.datas[i] = hex2int(m.group(1));
             }
         }
-        packet.datas[5] += startTime ;
-        //packet.modifyValue();
+        packet.datas[5] += startTime;
         lis.add(packet);
-        if (lis.size() > MAX_ITEMS) {
+        if (lis.size() >= MAX_ITEMS) {
             lis.remove(0);
         }
         return packet;
     }
-
-   
 
     void display() throws Exception{
         for (int i = 0; i < this.datas.length; i++) {
@@ -288,8 +211,9 @@ class MsgPacket {
             case 2: // temperature
                 return String.format("%.2f", (val * 0.01 - 40.1)) + "C ";
             case 3: // humidity
+                return String.format("%.2f", val / 25.0 - 28.0 * val * val / 10000000.0 - 4) + "rh ";
             case 4: // radiation
-                return val + " ";
+                return val + "lx ";
             case 5: // currentTime
                 return calcTime(val);
             default:
@@ -300,7 +224,6 @@ class MsgPacket {
     int getValue(String key) {
         for (int i = 0; i < patterns.length; i++) {
             if (patterns[i].equals(key)) {
-                //System.out.println("found key [" + key + "]: " + this.datas[i]);
                 return this.datas[i];
             }
         }
@@ -311,8 +234,6 @@ class MsgPacket {
     void setValue(String key, int val) {
         for (int i = 0; i < patterns.length; i++) {
             if (patterns[i].equals(key)) {
-                //System.out.println("found key [" + key + "]: " + this.datas[i]);
-                //return this.datas[i];
                 this.datas[i] = val;
                 return;
             }
@@ -352,12 +273,14 @@ class MyCanvas extends JPanel {
     // limit of radiation
     static int RADIATION_MAX = Const.RADIATION_MAX;
     static int RADIATION_MIN = Const.RADIATION_MIN;
+
     
 
     int nodeIDSwitch;
 
     MyCanvas() {
         this.nodeIDSwitch = 1;
+        
     }
 
     static Point calc(Character type, int val, int index) {
@@ -392,29 +315,31 @@ class MyCanvas extends JPanel {
         return res;
     }
 
+    public static void initLimit(MsgPacket packet) {
+        TEMPERATURE_MAX = packet.getValue("temperature") + 50;
+        TEMPERATURE_MIN = TEMPERATURE_MAX - 100;
+        HUMIDITY_MAX = packet.getValue("humidity") + 20;
+        HUMIDITY_MIN = HUMIDITY_MAX - 40;
+        RADIATION_MAX = packet.getValue("radiation") + 5;
+        RADIATION_MIN = 0;
+    }
+
     public void paintComponent(Graphics g) {
         Graphics2D g2D = (Graphics2D) g;
 
         // anti-aliasing
         g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
-
         // stroke
         g2D.setStroke(new BasicStroke(Const.STROKE_WIDTH));
-
         super.paintComponent(g);
-
         calcLimit();
-
         paintYValue(g2D);
-
         paintAxis(g2D);
         paintLegend(g2D);
         paintCoordinate(g2D);
-
         paintSingle(g2D, 't');
         paintSingle(g2D, 'h');
         paintSingle(g2D, 'r');
-
     }
 
     private void paintLegend(Graphics2D g) {
@@ -447,13 +372,16 @@ class MyCanvas extends JPanel {
             humidity = (HUMIDITY_MIN + (HUMIDITY_MAX - HUMIDITY_MIN) * i / Const.ELEM_NUM_Y);
             radiation = (RADIATION_MIN + (RADIATION_MAX - RADIATION_MIN) * i / Const.ELEM_NUM_Y);
             
+            String form;
             g.setColor(Const.POINT_TEMPERATURE_COLOR);
-            g.drawChars(("" + temperature).toCharArray(), 0, ("" + temperature).length(), x, y);
+            form = String.format("%.2f", (temperature * 0.01 - 40.1)) + "C";
+            g.drawChars(form.toCharArray(), 0, form.length(), x, y);
             g.setColor(Const.POINT_HUMIDITY_COLOR);
-            g.drawChars(("" + humidity).toCharArray(), 0, ("" + humidity).length(), x, y + Const.COORDINATE_FONT_SIZE);
+            form = String.format("%.1f", humidity / 25.0 - 28.0 * humidity * humidity / 10000000.0 - 4) + "rh";
+            g.drawChars(form.toCharArray(), 0, form.length(), x, y + Const.COORDINATE_FONT_SIZE);
             g.setColor(Const.POINT_RADIATION_COLOR);
-            g.drawChars(("" + radiation).toCharArray(), 0, ("" + radiation).length(), x, y + 2 * Const.COORDINATE_FONT_SIZE);
-            
+            form = radiation + "lx";
+            g.drawChars(form.toCharArray(), 0, form.length(), x, y + 2 * Const.COORDINATE_FONT_SIZE);
         }
     }
 
@@ -490,7 +418,6 @@ class MyCanvas extends JPanel {
                 break;
         }
 
-        //int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_SINGLE);
         int length = MsgPacket.lis.size();
         Point lastPoint = null;
         int idCount = 0;
@@ -509,9 +436,7 @@ class MyCanvas extends JPanel {
                 lastPoint = point;
                 idCount++;
             }
-
         }
-
     }
 
     private void calcLimit() {
@@ -519,18 +444,29 @@ class MyCanvas extends JPanel {
         int idCount = 0;
         int tempVal;
         MsgPacket packet;
-        TEMPERATURE_MAX = Const.TEMPERATURE_MAX;
-        TEMPERATURE_MIN = Const.TEMPERATURE_MIN;
-        HUMIDITY_MAX = Const.HUMIDITY_MAX;
-        HUMIDITY_MIN = Const.HUMIDITY_MIN;
-        RADIATION_MAX = Const.RADIATION_MAX;
-        RADIATION_MIN = Const.RADIATION_MIN;
+        // TEMPERATURE_MAX = Const.TEMPERATURE_MAX;
+        // TEMPERATURE_MIN = Const.TEMPERATURE_MIN;
+        // HUMIDITY_MAX = Const.HUMIDITY_MAX;
+        // HUMIDITY_MIN = Const.HUMIDITY_MIN;
+        // RADIATION_MAX = Const.RADIATION_MAX;
+        // RADIATION_MIN = Const.RADIATION_MIN;
         for (int i = 0; i < length; i++) {
             if (idCount >= Const.MAX_POINT_SINGLE) {
                 break;
             }
             packet = MsgPacket.lis.get(i);
             if (packet.getValue("nodeId") == nodeIDSwitch) {
+                if (idCount == 0) {
+                    TEMPERATURE_MAX = packet.getValue("temperature") + 20;
+                    TEMPERATURE_MIN = TEMPERATURE_MAX - 40;
+                    HUMIDITY_MAX = packet.getValue("humidity") + 20;
+                    HUMIDITY_MIN = HUMIDITY_MAX - 30;
+                    RADIATION_MAX = 100;
+                    RADIATION_MIN = 0;
+                    //setted[nodeIDSwitch - 1] = true;
+                    idCount++;
+                    continue;
+                }
                 tempVal = packet.getValue("temperature");
                 if (tempVal > TEMPERATURE_MAX) {
                     TEMPERATURE_MAX = tempVal;
@@ -549,14 +485,15 @@ class MyCanvas extends JPanel {
                 } else if (tempVal < RADIATION_MIN) {
                     RADIATION_MIN = tempVal;
                 }
+                idCount++;
             }
+            
         }
     }
     
 
     private void paintCoordinate(Graphics2D g) {
         g.setFont(Const.COORDINATE_FONT);
-        //int length = Math.min(MsgPacket.lis.size(), Const.MAX_POINT_SINGLE);
         int length = MsgPacket.lis.size();
         int idCount = 0;
         MsgPacket packet;
@@ -576,8 +513,6 @@ class MyCanvas extends JPanel {
             }
         }
     }
-
-    
 }
 
 // singleton
@@ -591,7 +526,6 @@ class SwingChart {
     private FrequencyBtnClickListener setListener;
     private JTextField frequencyInput;
     private MyMsgReader user;
-    //Date startTime;
 
     static synchronized SwingChart getInstance() {
         if (test == null) {
@@ -599,10 +533,6 @@ class SwingChart {
         }
         return test;
     }
-
-    // public static void main(String[] args) {
-    //     getInstance();
-    // }
 
     int getFrequency() {
         return Integer.parseInt(frequencyInput.getText());
@@ -614,8 +544,6 @@ class SwingChart {
         } catch (Exception e){
 
         }
-
-
         prepareGUI();
     }
 
@@ -628,17 +556,13 @@ class SwingChart {
     }
 
     private void prepareGUI() {
-
         // create window
         frame = new JFrame("WSN data chart");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
         frame.setBounds(0, 0, Const.WND_WIDTH, Const.WND_HEIGHT);
         frame.setResizable(true);
-
         // canvas
         myc = new MyCanvas();
-
         frame.add(myc);
 
         // show nodes
@@ -653,7 +577,6 @@ class SwingChart {
             nodeBtns[i].setText("node " + (i + 1));
             nodeBtns[i].setBorderPainted(false);
             nodeBtns[i].addActionListener(listeners[i]);
-
             myc.add(nodeBtns[i]);
         }
 
@@ -672,9 +595,6 @@ class SwingChart {
         frequencyInput.setBounds(Const.FREQUENCY_INPUT_X, Const.FREQUENCY_INPUT_Y, Const.FREQUENCY_WIDTH, Const.FREQUENCY_HEIGHT);
         myc.add(frequencyInput);
 
-
-
-
         frame.setVisible(true);
     }
 
@@ -687,7 +607,6 @@ class SwingChart {
         @Override
         public void actionPerformed(ActionEvent e) {
             myc.nodeIDSwitch = nodeId;
-            //System.out.println(myc.nodeIDSwitch);
             update();
         }
     }
@@ -699,20 +618,21 @@ class SwingChart {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            //callSendStartMsg();
             MsgPacket.startTime = System.currentTimeMillis() % 86400000;
+            
 	    System.out.println(MsgPacket.startTime);
             user.sendStartCommand(getFrequency());
         }
     }
-
-
 }
 
 public class MyMsgReader implements net.tinyos.message.MessageListener {
 
   private MoteIF moteIF;
   private static String commandClassType;
+  
+    // init or not
+    static boolean setted = false;
   
 
   public MyMsgReader(String source) throws Exception {
@@ -730,8 +650,6 @@ public class MyMsgReader implements net.tinyos.message.MessageListener {
   }
 
   public void sendStartCommand(int sensePeriod) {
-    
-    //cmdType.
     try {
         Class cmdType = Class.forName(commandClassType);
         Object payload = cmdType.newInstance();
@@ -756,31 +674,20 @@ public class MyMsgReader implements net.tinyos.message.MessageListener {
     } catch(Exception e) {
         e.printStackTrace();
     }
-    
-    // Object payload = cmdType.newInstance();
-    // if (pay)
-    // try {
-    //     payload.set_status(1);
-    //     payload.set_sensePeriod(sensePeriod);
-    //     payload.set_sendPeriod(sensePeriod * 5);
-    //     payload.set_windowSize(10);
-    //     this.moteIF.send(0, payload);
-    // } catch (Exception e) {
-    //     e.printStackTrace();
-    // }
-    
   }
   
   
   public void messageReceived(int to, Message message) {
     long t = System.currentTimeMillis();
-    //    Date d = new Date(t);
-    //System.out.print("" + t + ": ");
-    //System.out.println(message);
     try {
         String str = message.toString();
         System.out.println(str);
-        MsgPacket.form(str).display();
+        MsgPacket newPacket = MsgPacket.form(str);
+        newPacket.display();
+        // if (setted == false) {
+        //     MyCanvas.initLimit(newPacket);
+        //     setted = true;
+        // }
         SwingChart.getInstance().update();
     } catch(Exception e) {
       
@@ -839,6 +746,4 @@ public class MyMsgReader implements net.tinyos.message.MessageListener {
     }
     mr.start();
   }
-
-
 }
